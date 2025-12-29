@@ -1,0 +1,169 @@
+# Cursor Rules for Dashbort
+
+## Project Stack
+- **Framework**: Next.js (App Router)
+- **Styling**: Tailwind CSS
+- **Backend**: Firebase (Firestore, Authentication, Storage, Functions)
+- **Language**: TypeScript
+
+## General Principles
+- Prefer server components by default in Next.js App Router
+- Use client components only when necessary (interactivity, hooks, browser APIs)
+- Follow Next.js 13+ conventions and best practices
+- Write type-safe code with TypeScript
+- Use functional components and modern React patterns
+- Keep components small, focused, and reusable
+- **Agent should automatically install required packages without asking the user**
+
+## File Structure
+- Use Next.js App Router structure (`app/` directory)
+- Components in `app/components/` or `components/`
+- Utilities in `lib/` or `utils/`
+- Types/interfaces in `types/` or `@/types`
+- Firebase config in `lib/firebase/` or `config/firebase.ts`
+- API routes in `app/api/` (if needed alongside Firebase)
+- Use path aliases (`@/` for root) configured in `tsconfig.json`
+
+## Next.js Conventions
+- Use Server Components by default
+- Mark Client Components with `'use client'` directive at the top
+- Use `async/await` in Server Components for data fetching
+- Leverage Next.js built-in features: Image, Link, Metadata API
+- Use route handlers (`route.ts`) for API endpoints when needed
+- Implement proper error boundaries and error.tsx files
+- Use loading.tsx for loading states
+- Follow Next.js file naming conventions (page.tsx, layout.tsx, etc.)
+
+## Tailwind CSS
+- Use utility classes, avoid custom CSS when possible
+- Use Tailwind's design tokens (colors, spacing, typography)
+- Prefer composition over custom classes
+- Use `@apply` sparingly, only for repeated patterns
+- Use responsive prefixes (`sm:`, `md:`, `lg:`, `xl:`, `2xl:`)
+- Use dark mode classes when needed (`dark:`)
+- Keep class names readable and organized
+- Use Tailwind's arbitrary values when needed (`w-[123px]`)
+
+## Firebase Integration
+- Initialize Firebase in a separate config file (`lib/firebase/config.ts`)
+- **ALWAYS use `react-firebase-hooks` for client-side Firebase operations when possible**
+- Use `react-firebase-hooks` package for all Firebase interactions in client components (agent should install if missing)
+- Use Firebase Admin SDK for server-side operations only
+- Prefer `react-firebase-hooks` hooks over manual Firebase SDK calls in client components:
+  - Use `useAuthState()` instead of manual auth state management
+  - Use `useDocument()`, `useCollection()`, `useCollectionData()` for Firestore queries
+  - Use `useDownloadURL()` for Storage file downloads
+  - Use `useSignInWithEmailAndPassword()`, `useCreateUserWithEmailAndPassword()`, etc. for auth operations
+- Implement proper error handling for Firebase operations (hooks provide error states)
+- Use Firebase Security Rules for data protection
+- Structure Firestore collections logically
+- Use Firebase Auth for authentication via hooks
+- Hooks automatically provide loading and error states - use them instead of manual state management
+- Use Firebase Storage hooks (`useUploadFile()`, `useDownloadURL()`) for file operations
+- Consider using Firebase Functions for server-side logic
+- Only use direct Firebase SDK calls when hooks don't provide the needed functionality
+
+## Firebase React Hooks (react-firebase-hooks)
+- **MANDATORY: Use `react-firebase-hooks` for all client-side Firebase operations**
+- Agent should automatically install `react-firebase-hooks` if not already in package.json
+- Import hooks from `react-firebase-hooks` (e.g., `import { useAuthState, useDocument } from 'react-firebase-hooks'`)
+- **Authentication Hooks:**
+  - `useAuthState(auth)` - Get current user, loading, and error states
+  - `useSignInWithEmailAndPassword(auth)` - Sign in with email/password
+  - `useCreateUserWithEmailAndPassword(auth)` - Create new user
+  - `useSignOut(auth)` - Sign out user
+  - `useSendPasswordResetEmail(auth)` - Send password reset email
+  - `useSendEmailVerification(auth)` - Send email verification
+- **Firestore Hooks:**
+  - `useDocument(docRef, options)` - Get single document with loading/error states
+  - `useCollection(queryRef, options)` - Get collection with loading/error states
+  - `useCollectionData(queryRef, options)` - Get collection data as array
+  - `useCollectionOnce(queryRef, options)` - Get collection once (no real-time)
+  - `useDocumentData(docRef, options)` - Get document data directly
+- **Storage Hooks:**
+  - `useDownloadURL(ref)` - Get download URL for file
+  - `useUploadFile(storage, ref)` - Upload file to storage
+- **Best Practices:**
+  - Always destructure loading and error states from hooks: `const [value, loading, error] = useHook()`
+  - Handle loading states in UI (show loading indicators)
+  - Handle error states appropriately (show error messages)
+  - Use hooks' built-in error handling instead of try-catch when possible
+  - Pass Firebase service instances (auth, db, storage) from config file to hooks
+  - Use TypeScript generics for type safety: `useDocument<User>(docRef)`
+
+## Component Patterns
+- Use TypeScript interfaces for props
+- Export components as named exports
+- Use default exports for pages only
+- Keep components focused on a single responsibility
+- Extract reusable logic into custom hooks
+- **Prefer `react-firebase-hooks` hooks over custom Firebase hooks when available**
+- Use proper prop validation with TypeScript
+- Implement proper error boundaries
+- When using Firebase in client components, leverage hooks' built-in loading and error states
+
+## Code Style
+- Use async/await over promises when possible
+- Use const/let appropriately (prefer const)
+- Use arrow functions for component definitions
+- Use template literals for string concatenation
+- Use optional chaining and nullish coalescing
+- Write self-documenting code with clear variable names
+- Add JSDoc comments for complex functions
+- Keep functions small and focused
+
+## Error Handling
+- Use try-catch blocks for async operations
+- Provide meaningful error messages
+- Log errors appropriately (console.error in development)
+- Use Next.js error boundaries
+- Handle Firebase errors gracefully
+- Show user-friendly error messages in UI
+
+## Performance
+- Use Next.js Image component for images
+- Implement proper loading states
+- Use React.memo() when appropriate
+- Lazy load components when beneficial
+- Optimize Firebase queries (limit, pagination)
+- Use Next.js caching strategies appropriately
+
+## Security
+- Never expose Firebase config keys in client code
+- Use environment variables for sensitive data
+- Validate user input on both client and server
+- Implement proper authentication checks
+- Use Firebase Security Rules
+- Sanitize user inputs
+
+## Environment Variables
+- Use `.env.local` for local development
+- Use `.env.example` to document required variables
+- Prefix Firebase env vars consistently (e.g., `NEXT_PUBLIC_FIREBASE_*`)
+- Never commit `.env.local` to version control
+
+## Testing Considerations
+- Write testable components
+- Keep business logic separate from UI
+- Use proper TypeScript types for testability
+
+## Dependencies
+- Prefer Next.js built-in solutions over external packages
+- **REQUIRED: Use `react-firebase-hooks` for all Firebase client-side operations (agent should install if missing)**
+- Agent should automatically install required packages without asking the user
+- Use well-maintained, popular packages
+- Keep dependencies up to date
+- Use shadcn/ui or similar component libraries when appropriate (per user preference)
+
+## When Writing Code
+- Always use TypeScript types
+- Prefer Server Components unless client-side features are needed
+- **For client components using Firebase: ALWAYS use `react-firebase-hooks` hooks instead of direct SDK calls**
+- Use Tailwind utilities for styling
+- Follow Next.js conventions for routing and data fetching
+- Implement proper error handling (hooks provide error states automatically)
+- Write clean, readable, maintainable code
+- Consider performance implications
+- Follow accessibility best practices
+- Example: Use `const [user, loading, error] = useAuthState(auth)` instead of manual auth state management
+
