@@ -157,3 +157,69 @@ export function usePaydaySettings(userId: string | null) {
   return [payday, loading, error] as const;
 }
 
+export type BortId = 'workTimer' | 'repCounter' | 'sunriseSunset' | 'recurringDailyActions' | 'daysUntilPayday' | 'dateTime';
+
+/**
+ * Custom hook to save user's bort order to Firestore at users/{userId}/settings.bortOrder
+ * Follows react-firebase-hooks pattern with loading and error states
+ * @param userId - The user's UID
+ * @returns Tuple with save function, loading state, and error state
+ */
+export function useSaveBortOrder(userId: string | null) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const saveBortOrder = useCallback(
+    async (bortOrder: BortId[]) => {
+      if (!userId) {
+        setError(new Error('User ID is required'));
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const userRef = doc(db, 'users', userId);
+        
+        await setDoc(
+          userRef,
+          {
+            settings: {
+              bortOrder: {
+                order: bortOrder,
+                timestamp: Date.now(),
+              },
+            },
+          },
+          { merge: true }
+        );
+      } catch (err) {
+        const firebaseError = err instanceof Error ? err : new Error('Failed to save bort order');
+        setError(firebaseError);
+        throw firebaseError;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [userId]
+  );
+
+  return [saveBortOrder, loading, error] as const;
+}
+
+/**
+ * Custom hook to get user's bort order from Firestore
+ * Uses react-firebase-hooks useDocumentData for reading
+ * @param userId - The user's UID
+ * @returns Bort order array, loading state, and error state
+ */
+export function useBortOrder(userId: string | null) {
+  const userRef = userId ? doc(db, 'users', userId) : null;
+  const [userData, loading, error] = useDocumentData(userRef);
+
+  const bortOrder: BortId[] | null = userData?.settings?.bortOrder?.order || null;
+
+  return [bortOrder, loading, error] as const;
+}
+

@@ -139,7 +139,7 @@ export default function RecurringDailyActions() {
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-6 border border-zinc-200 dark:border-zinc-800 select-none">
+      <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-6 border border-zinc-200 dark:border-zinc-800 select-none w-full h-full flex flex-col">
         <div className="text-zinc-600 dark:text-zinc-400">Loading...</div>
       </div>
     );
@@ -147,7 +147,7 @@ export default function RecurringDailyActions() {
 
   if (error) {
     return (
-      <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-6 border border-zinc-200 dark:border-zinc-800 select-none">
+      <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-6 border border-zinc-200 dark:border-zinc-800 select-none w-full h-full flex flex-col">
         <div className="text-red-600 dark:text-red-400">Error: {error.message}</div>
       </div>
     );
@@ -159,7 +159,7 @@ export default function RecurringDailyActions() {
 
   return (
     <>
-      <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-6 border border-zinc-200 dark:border-zinc-800 select-none">
+      <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-6 border border-zinc-200 dark:border-zinc-800 select-none w-full h-full flex flex-col overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
             Recurring Daily Actions

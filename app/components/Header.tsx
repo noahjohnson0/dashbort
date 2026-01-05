@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useSignOut } from 'react-firebase-hooks/auth';
 import { auth } from '@/lib/firebase';
@@ -22,47 +21,9 @@ interface HeaderProps {
 
 export default function Header({ user }: HeaderProps) {
     const [signOut, , signOutError] = useSignOut(auth);
-    const [currentDateTime, setCurrentDateTime] = useState(new Date());
-
-    useEffect(() => {
-        let timer: NodeJS.Timeout | null = null;
-        
-        // Calculate time until next second boundary
-        const now = Date.now();
-        const msUntilNextSecond = 1000 - (now % 1000);
-        
-        // Set initial timeout to align with second boundary
-        const initialTimeout = setTimeout(() => {
-            setCurrentDateTime(new Date());
-            
-            // Then use setInterval for subsequent updates
-            timer = setInterval(() => {
-                setCurrentDateTime(new Date());
-            }, 1000);
-        }, msUntilNextSecond);
-        
-        return () => {
-            clearTimeout(initialTimeout);
-            if (timer) {
-                clearInterval(timer);
-            }
-        };
-    }, []);
-
-    const formatDateTime = (date: Date) => {
-        return date.toLocaleString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-        });
-    };
 
     return (
-        <header className="mb-8 grid grid-cols-3 items-center">
+        <header className="mb-8 flex items-center justify-between">
             <div className="flex items-center gap-3">
                 <div className="h-[2em] flex items-center">
                     <Image
@@ -76,11 +37,6 @@ export default function Header({ user }: HeaderProps) {
                 <h1 className="text-4xl font-bold text-zinc-900 dark:text-zinc-100 font-outfit">
                     Dash<span className="text-blue-600 dark:text-blue-400">bort</span>
                 </h1>
-            </div>
-            <div className="flex justify-center">
-                <span className="text-sm text-zinc-600 dark:text-zinc-400 font-mono">
-                    {formatDateTime(currentDateTime)}
-                </span>
             </div>
             <div className="flex justify-end">
                 <DropdownMenu>

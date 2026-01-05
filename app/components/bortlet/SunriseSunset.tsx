@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Sunrise, Sunset, Sun, Moon, MapPin, X } from 'lucide-react';
+import { Sunrise, Sunset, MapPin, X } from 'lucide-react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, useSaveUserLocation, useUserLocation } from '@/lib/firebase';
 
@@ -239,7 +239,7 @@ export default function SunriseSunset() {
   }, [user?.uid, savedLocation, locationLoading]);
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-6 border border-zinc-200 dark:border-zinc-800 select-none">
+    <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-6 border border-zinc-200 dark:border-zinc-800 select-none w-full h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
           Sunrise & Sunset
@@ -319,29 +319,13 @@ export default function SunriseSunset() {
                   </div>
                 </div>
               </div>
-              <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800">
-                <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-                  <span>Currently:</span>
-                  <span className="flex items-center gap-1.5 font-semibold text-zinc-900 dark:text-zinc-100">
-                    {sunTimes?.isDay ? (
-                      <>
-                        <Sun className="h-4 w-4 text-yellow-500" />
-                        Day
-                      </>
-                    ) : (
-                      <>
-                        <Moon className="h-4 w-4 text-blue-400" />
-                        Night
-                      </>
-                    )}
-                  </span>
-                </div>
-                {(locationName || zipcode) && (
+              {(locationName || zipcode) && (
+                <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800">
                   <div className="text-xs text-zinc-500 dark:text-zinc-500 mt-1">
                     Location: {locationName || zipcode}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           )}
         </>

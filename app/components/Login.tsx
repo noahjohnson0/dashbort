@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useSignInWithEmailAndPassword, useCreateUserWithEmailAndPassword } from 'react-firebase-hooks/auth';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
@@ -56,10 +57,19 @@ export default function Login() {
     <div className="min-h-screen bg-zinc-50 dark:bg-black flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-8">
-          <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-2">
+          <div className="flex justify-center mb-6">
+            <Image
+              src="/bort-logo.png"
+              alt="Dashbort Logo"
+              width={120}
+              height={120}
+              className="object-contain"
+            />
+          </div>
+          <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-2 text-center">
             Dash<span className="text-blue-600 dark:text-blue-400">bort</span>
           </h1>
-          <p className="text-zinc-600 dark:text-zinc-400 mb-8">
+          <p className="text-zinc-600 dark:text-zinc-400 mb-8 text-center">
             {isSignUp ? 'Create an account' : 'Sign in to your account'}
           </p>
 

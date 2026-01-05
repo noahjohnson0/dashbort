@@ -239,7 +239,7 @@ export default function DaysUntilPayday() {
   };
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-6 border border-zinc-200 dark:border-zinc-800 select-none">
+    <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-6 border border-zinc-200 dark:border-zinc-800 select-none w-full h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
           Days Until Payday
