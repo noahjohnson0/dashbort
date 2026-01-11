@@ -24,6 +24,7 @@ import SunriseSunset from './bortlet/SunriseSunset';
 import RecurringDailyActions from './bortlet/RecurringDailyActions';
 import DaysUntilPayday from './bortlet/DaysUntilPayday';
 import DateTime from './bortlet/DateTime';
+import GoogleCalendar from './bortlet/GoogleCalendar';
 import { useBortOrder, useSaveBortOrder, type BortId } from '@/lib/firebase/userSettings';
 import { SortableBort } from './SortableBort';
 
@@ -38,6 +39,7 @@ const DEFAULT_BORT_ORDER: BortId[] = [
     'recurringDailyActions',
     'daysUntilPayday',
     'dateTime',
+    'googleCalendar',
 ];
 
 const BORT_COMPONENTS: Record<BortId, () => React.ReactElement> = {
@@ -47,6 +49,7 @@ const BORT_COMPONENTS: Record<BortId, () => React.ReactElement> = {
     recurringDailyActions: RecurringDailyActions,
     daysUntilPayday: DaysUntilPayday,
     dateTime: DateTime,
+    googleCalendar: GoogleCalendar,
 };
 
 export default function Dashboard({ user }: DashboardProps) {
@@ -135,8 +138,14 @@ export default function Dashboard({ user }: DashboardProps) {
                                 .filter((bortId) => bortId in BORT_COMPONENTS)
                                 .map((bortId) => {
                                     const BortComponent = BORT_COMPONENTS[bortId];
+                                    const is1x1 = bortId === 'dateTime' || bortId === 'daysUntilPayday';
                                     return (
-                                        <SortableBort key={bortId} id={bortId}>
+                                        <SortableBort 
+                                            key={bortId} 
+                                            id={bortId}
+                                            colSpan={1}
+                                            rowSpan={is1x1 ? 1 : 2}
+                                        >
                                             <BortComponent />
                                         </SortableBort>
                                     );

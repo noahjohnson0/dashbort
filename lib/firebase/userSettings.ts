@@ -157,7 +157,7 @@ export function usePaydaySettings(userId: string | null) {
   return [payday, loading, error] as const;
 }
 
-export type BortId = 'workTimer' | 'repCounter' | 'sunriseSunset' | 'recurringDailyActions' | 'daysUntilPayday' | 'dateTime';
+export type BortId = 'workTimer' | 'repCounter' | 'sunriseSunset' | 'recurringDailyActions' | 'daysUntilPayday' | 'dateTime' | 'googleCalendar';
 
 /**
  * Custom hook to save user's bort order to Firestore at users/{userId}/settings.bortOrder
@@ -223,3 +223,38 @@ export function useBortOrder(userId: string | null) {
   return [bortOrder, loading, error] as const;
 }
 
+export interface GoogleCalendarSettings {
+  accessToken?: string;
+  refreshToken?: string;
+  expiresAt?: number;
+  calendarIds?: string[];
+  maxEvents?: number;
+  timestamp?: number;
+}
+
+/**
+ * Custom hook to get user's Google Calendar settings from Firestore
+ * Uses react-firebase-hooks useDocumentData for reading
+ * @param userId - The user's UID
+ * @returns Google Calendar settings, loading state, and error state
+ */
+export function useGoogleCalendarSettings(userId: string | null) {
+  const userRef = userId ? doc(db, 'users', userId) : null;
+  const [userData, loading, error] = useDocumentData(userRef);
+
+  const settings: GoogleCalendarSettings | null = userData?.settings?.googleCalendar || null;
+
+  // Debug logging
+  if (userId && !loading) {
+    console.log('useGoogleCalendarSettings:', {
+      userId,
+      hasUserData: !!userData,
+      hasSettings: !!userData?.settings,
+      hasGoogleCalendar: !!userData?.settings?.googleCalendar,
+      settings,
+      error,
+    });
+  }
+
+  return [settings, loading, error] as const;
+}

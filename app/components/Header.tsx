@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { LogOut, Settings } from 'lucide-react';
 import type { User } from 'firebase/auth';
+import { ThemeToggle } from './ThemeToggle';
 
 interface HeaderProps {
     user: User;
@@ -38,7 +39,8 @@ export default function Header({ user }: HeaderProps) {
                     Dash<span className="text-blue-600 dark:text-blue-400">bort</span>
                 </h1>
             </div>
-            <div className="flex justify-end">
+            <div className="flex items-center gap-3">
+                <ThemeToggle />
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600">

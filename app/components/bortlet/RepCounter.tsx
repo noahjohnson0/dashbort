@@ -76,11 +76,11 @@ export default function RepCounter() {
     const newCount = currentCount + 1;
     const updatedCounts = { ...counts, [exerciseType]: newCount };
     setCounts(updatedCounts);
-    
+
     const storageKey = `repCount_${exerciseType}`;
     localStorage.setItem(storageKey, newCount.toString());
     localStorage.setItem(`repCountDate_${exerciseType}`, new Date().toDateString());
-    
+
     // Highlight the exercise card
     setHighlightedExercise(exerciseType);
   };
@@ -91,7 +91,7 @@ export default function RepCounter() {
       const newCount = currentCount - 1;
       const updatedCounts = { ...counts, [exerciseType]: newCount };
       setCounts(updatedCounts);
-      
+
       const storageKey = `repCount_${exerciseType}`;
       localStorage.setItem(storageKey, newCount.toString());
       localStorage.setItem(`repCountDate_${exerciseType}`, new Date().toDateString());
@@ -126,10 +126,10 @@ export default function RepCounter() {
 
     // Save to localStorage
     localStorage.setItem('repCounter_exerciseTypes', JSON.stringify(validExercises));
-    
+
     // Update state
     setExerciseTypes(validExercises);
-    
+
     // Close dialog
     setIsDialogOpen(false);
   };
@@ -156,24 +156,21 @@ export default function RepCounter() {
           <div
             key={exerciseType}
             onClick={() => increment(exerciseType)}
-            className={`cursor-pointer hover:opacity-80 transition-all duration-300 rounded-lg p-3 border ${
-              highlightedExercise === exerciseType
-                ? 'bg-green-500 dark:bg-green-600 border-green-600 dark:border-green-700'
-                : 'bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700'
-            }`}
+            className={`cursor-pointer hover:opacity-80 transition-all duration-300 rounded-lg p-3 border ${highlightedExercise === exerciseType
+              ? 'bg-green-500 dark:bg-green-600 border-green-600 dark:border-green-700'
+              : 'bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700'
+              }`}
           >
-            <div className={`text-xs font-semibold mb-1.5 text-center select-none uppercase tracking-wide ${
-              highlightedExercise === exerciseType
-                ? 'text-white'
-                : 'text-zinc-600 dark:text-zinc-400'
-            }`}>
+            <div className={`text-xs font-semibold mb-1.5 text-center select-none uppercase tracking-wide ${highlightedExercise === exerciseType
+              ? 'text-white'
+              : 'text-zinc-600 dark:text-zinc-400'
+              }`}>
               {exerciseType}
             </div>
-            <div className={`text-2xl font-bold mb-2 text-center select-none ${
-              highlightedExercise === exerciseType
-                ? 'text-white'
-                : 'text-zinc-900 dark:text-zinc-100'
-            }`}>
+            <div className={`text-2xl font-bold mb-2 text-center select-none ${highlightedExercise === exerciseType
+              ? 'text-white'
+              : 'text-zinc-900 dark:text-zinc-100'
+              }`}>
               {counts[exerciseType] || 0}
             </div>
             <div className="flex gap-2 justify-center">
@@ -183,7 +180,7 @@ export default function RepCounter() {
                   decrement(exerciseType);
                 }}
                 disabled={(counts[exerciseType] || 0) === 0}
-                className="px-3 py-1.5 bg-red-500 hover:bg-red-600 disabled:bg-zinc-300 disabled:cursor-not-allowed text-white rounded-md font-semibold transition-colors select-none text-xs"
+                className="px-3 py-1.5 bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 disabled:bg-zinc-300 dark:disabled:bg-zinc-600 disabled:cursor-not-allowed text-white rounded-md font-semibold transition-colors select-none text-xs"
               >
                 −
               </button>
@@ -214,7 +211,7 @@ export default function RepCounter() {
                   <button
                     onClick={() => handleRemoveExercise(index)}
                     disabled={localExerciseTypes.length === 1}
-                    className="px-3 py-2 bg-red-500 hover:bg-red-600 disabled:bg-zinc-300 disabled:cursor-not-allowed text-white rounded-md font-semibold transition-colors text-sm"
+                    className="px-3 py-2 bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 disabled:bg-zinc-300 dark:disabled:bg-zinc-600 disabled:cursor-not-allowed text-white rounded-md font-semibold transition-colors text-sm"
                   >
                     Remove
                   </button>
@@ -223,7 +220,7 @@ export default function RepCounter() {
             </div>
             <button
               onClick={handleAddExercise}
-              className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md font-semibold transition-colors"
+              className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-md font-semibold transition-colors"
             >
               Add Exercise
             </button>
@@ -237,7 +234,7 @@ export default function RepCounter() {
             </button>
             <button
               onClick={handleSaveConfiguration}
-              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md font-semibold transition-colors"
+              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-md font-semibold transition-colors"
             >
               Save
             </button>

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Calendar, X } from 'lucide-react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, useSavePaydaySettings, usePaydaySettings } from '@/lib/firebase';
 
@@ -30,7 +29,7 @@ export default function DaysUntilPayday() {
   const [user] = useAuthState(auth);
   const [savedPayday, paydayLoading, paydayError] = usePaydaySettings(user?.uid || null);
   const [savePayday, savePaydayLoading, savePaydayError] = useSavePaydaySettings(user?.uid || null);
-  
+
   const [daysUntilPayday, setDaysUntilPayday] = useState<number | null>(null);
   const [nextPaydayDate, setNextPaydayDate] = useState<Date | null>(null);
   const [dayOfMonth1, setDayOfMonth1] = useState<number | 'last'>(15);
@@ -64,7 +63,7 @@ export default function DaysUntilPayday() {
     // This month's paydays
     const thisMonthPayday1 = getPaydayDate(targetDay1, currentYear, currentMonth);
     const thisMonthPayday2 = getPaydayDate(targetDay2, currentYear, currentMonth);
-    
+
     if (thisMonthPayday1.getTime() > now.getTime()) {
       candidates.push(thisMonthPayday1);
     }
@@ -82,10 +81,10 @@ export default function DaysUntilPayday() {
 
     // Find the earliest future payday
     const futurePaydays = candidates.filter(date => date.getTime() > now.getTime());
-    const nextPayday = futurePaydays.length > 0 
-      ? futurePaydays.reduce((earliest, current) => 
-          current.getTime() < earliest.getTime() ? current : earliest
-        )
+    const nextPayday = futurePaydays.length > 0
+      ? futurePaydays.reduce((earliest, current) =>
+        current.getTime() < earliest.getTime() ? current : earliest
+      )
       : candidates[0]; // Fallback to first candidate if all are in the past
 
     return nextPayday;
@@ -99,7 +98,7 @@ export default function DaysUntilPayday() {
     const now = new Date();
     const diffTime = nextPayday.getTime() - now.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     setDaysUntilPayday(Math.max(0, diffDays));
   };
 
@@ -115,7 +114,7 @@ export default function DaysUntilPayday() {
     const day2Str = dayOfMonth2 === 'last' ? 'last' : dayOfMonth2.toString();
     localStorage.setItem(PAYDAY_STORAGE_KEY_1, day1Str);
     localStorage.setItem(PAYDAY_STORAGE_KEY_2, day2Str);
-    
+
     // Save to Firebase
     if (user?.uid) {
       try {
@@ -129,7 +128,7 @@ export default function DaysUntilPayday() {
         // Don't block the UI if Firebase save fails
       }
     }
-    
+
     setIsEditing(false);
     calculateDaysUntilPayday(dayOfMonth1, dayOfMonth2);
   };
@@ -142,10 +141,10 @@ export default function DaysUntilPayday() {
   useEffect(() => {
     // Skip if already initialized
     if (hasInitialized.current) return;
-    
+
     // Wait for payday loading to complete
     if (paydayLoading) return;
-    
+
     // First, try to load payday from Firebase if user is authenticated
     if (user?.uid && savedPayday) {
       // Handle migration from old single-day format
@@ -165,14 +164,14 @@ export default function DaysUntilPayday() {
       hasInitialized.current = true;
       return;
     }
-    
+
     // Fallback to localStorage if Firebase doesn't have payday
     const savedDay1 = localStorage.getItem(PAYDAY_STORAGE_KEY_1);
     const savedDay2 = localStorage.getItem(PAYDAY_STORAGE_KEY_2);
-    
+
     // Check for old single-day format
     const oldSavedDay = localStorage.getItem('dashbort_payday_day');
-    
+
     if (savedDay1 && savedDay2) {
       const day1 = savedDay1 === 'last' ? 'last' : parseInt(savedDay1, 10);
       const day2 = savedDay2 === 'last' ? 'last' : parseInt(savedDay2, 10);
@@ -201,7 +200,7 @@ export default function DaysUntilPayday() {
     } else {
       setIsEditing(true);
     }
-    
+
     hasInitialized.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid, savedPayday, paydayLoading]);
@@ -239,20 +238,7 @@ export default function DaysUntilPayday() {
   };
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-6 border border-zinc-200 dark:border-zinc-800 select-none w-full h-full flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-          Days Until Payday
-        </h2>
-        <button
-          onClick={() => setIsEditing(!isEditing)}
-          className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
-          aria-label="Edit payday"
-        >
-          {isEditing ? <X className="h-5 w-5" /> : <Calendar className="h-5 w-5" />}
-        </button>
-      </div>
-
+    <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-4 border border-zinc-200 dark:border-zinc-800 select-none w-full h-full flex flex-col overflow-hidden">
       {isEditing ? (
         <div className="space-y-4">
           <div>
@@ -325,7 +311,7 @@ export default function DaysUntilPayday() {
             <button
               onClick={handleSavePayday}
               disabled={savePaydayLoading}
-              className="mt-3 w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="mt-3 w-full px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {savePaydayLoading ? 'Saving...' : 'Save'}
             </button>
@@ -339,29 +325,22 @@ export default function DaysUntilPayday() {
       ) : (
         <>
           {paydayLoading ? (
-            <div className="text-zinc-600 dark:text-zinc-400">Loading...</div>
+            <div className="text-zinc-600 dark:text-zinc-400 text-center">Loading...</div>
           ) : daysUntilPayday === null ? (
-            <div className="text-zinc-600 dark:text-zinc-400 text-sm">
+            <div className="text-zinc-600 dark:text-zinc-400 text-sm text-center">
               Please set your payday day
             </div>
           ) : (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div>
-                  <div className="text-4xl font-bold text-zinc-900 dark:text-zinc-100">
-                    {daysUntilPayday}
-                  </div>
+            <div className="flex flex-col gap-2 flex-1 min-h-0 justify-center">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+                  {daysUntilPayday} Days until payday
                 </div>
               </div>
               {nextPaydayDate && (
-                <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800">
-                  <div className="text-sm text-zinc-600 dark:text-zinc-400">
-                    Next payday: <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-                      {formatDate(nextPaydayDate)}
-                    </span>
-                  </div>
-                  <div className="text-xs text-zinc-500 dark:text-zinc-500 mt-1">
-                    Paydays: {formatPaydayLabel(dayOfMonth1)} & {formatPaydayLabel(dayOfMonth2)} of each month
+                <div className="text-center">
+                  <div className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                    {formatDate(nextPaydayDate)}
                   </div>
                 </div>
               )}

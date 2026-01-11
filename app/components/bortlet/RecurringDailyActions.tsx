@@ -44,7 +44,7 @@ function SettingsModal({ isOpen, onClose, actions, onSave, saving }: SettingsMod
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-zinc-200 dark:border-zinc-800">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
@@ -71,7 +71,7 @@ function SettingsModal({ isOpen, onClose, actions, onSave, saving }: SettingsMod
                 />
                 <button
                   onClick={() => handleRemoveAction(action.id)}
-                  className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-colors"
+                  className="px-4 py-2 bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white rounded-lg font-semibold transition-colors"
                 >
                   Remove
                 </button>
@@ -96,7 +96,7 @@ function SettingsModal({ isOpen, onClose, actions, onSave, saving }: SettingsMod
             <button
               onClick={handleSave}
               disabled={saving}
-              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-zinc-300 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors"
+              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:bg-zinc-300 dark:disabled:bg-zinc-600 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors"
             >
               {saving ? 'Saving...' : 'Save'}
             </button>
