@@ -5,7 +5,7 @@ import { useDocumentData } from 'react-firebase-hooks/firestore';
 
 export interface RepCounterData {
   exerciseTypes: string[];
-  currentDayCounts: Record<string, number>;
+  countsByDate: Record<string, Record<string, number>>; // date -> exerciseType -> count
   lastDate: string; // Date string in format from toDateString()
 }
 

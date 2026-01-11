@@ -46,22 +46,30 @@ export default function RepCounter() {
       setExerciseTypes(savedTypes);
       setLocalExerciseTypes(savedTypes);
 
+      // Get or initialize countsByDate
+      const countsByDate = repCounterData.countsByDate || {};
+      
       // Check if we need to reset counts for a new day
       if (repCounterData.lastDate === today) {
-        // Use saved counts
-        setCounts(repCounterData.currentDayCounts || {});
+        // Use saved counts for today
+        setCounts(countsByDate[today] || {});
       } else {
-        // Reset counts for new day
+        // Reset counts for new day (preserve historical data)
         const resetCounts: Record<ExerciseType, number> = {};
         savedTypes.forEach((exerciseType) => {
           resetCounts[exerciseType] = 0;
         });
         setCounts(resetCounts);
         
-        // Save reset data to Firebase
+        // Save reset data to Firebase, preserving all historical data
+        const updatedCountsByDate = {
+          ...countsByDate,
+          [today]: resetCounts,
+        };
+        
         saveRepCounterData({
           exerciseTypes: savedTypes,
-          currentDayCounts: resetCounts,
+          countsByDate: updatedCountsByDate,
           lastDate: today,
         }).catch(console.error);
       }
@@ -79,7 +87,9 @@ export default function RepCounter() {
       // Save initial data to Firebase
       saveRepCounterData({
         exerciseTypes: DEFAULT_EXERCISE_TYPES,
-        currentDayCounts: initialCounts,
+        countsByDate: {
+          [today]: initialCounts,
+        },
         lastDate: today,
       }).catch(console.error);
     }
@@ -95,7 +105,7 @@ export default function RepCounter() {
   }, [highlightedExercise]);
 
   const increment = useCallback(async (exerciseType: ExerciseType) => {
-    if (!user?.uid) return;
+    if (!user?.uid || !repCounterData) return;
 
     const currentCount = counts[exerciseType] || 0;
     const newCount = currentCount + 1;
@@ -104,11 +114,15 @@ export default function RepCounter() {
 
     const today = new Date().toDateString();
     
-    // Save to Firebase
+    // Save to Firebase, preserving all historical data
+    const countsByDate = repCounterData.countsByDate || {};
     try {
       await saveRepCounterData({
         exerciseTypes,
-        currentDayCounts: updatedCounts,
+        countsByDate: {
+          ...countsByDate,
+          [today]: updatedCounts,
+        },
         lastDate: today,
       });
     } catch (err) {
@@ -117,10 +131,10 @@ export default function RepCounter() {
 
     // Highlight the exercise card
     setHighlightedExercise(exerciseType);
-  }, [counts, exerciseTypes, user?.uid, saveRepCounterData]);
+  }, [counts, exerciseTypes, user?.uid, repCounterData, saveRepCounterData]);
 
   const decrement = useCallback(async (exerciseType: ExerciseType) => {
-    if (!user?.uid) return;
+    if (!user?.uid || !repCounterData) return;
 
     const currentCount = counts[exerciseType] || 0;
     if (currentCount > 0) {
@@ -130,18 +144,22 @@ export default function RepCounter() {
 
       const today = new Date().toDateString();
       
-      // Save to Firebase
+      // Save to Firebase, preserving all historical data
+      const countsByDate = repCounterData.countsByDate || {};
       try {
         await saveRepCounterData({
           exerciseTypes,
-          currentDayCounts: updatedCounts,
+          countsByDate: {
+            ...countsByDate,
+            [today]: updatedCounts,
+          },
           lastDate: today,
         });
       } catch (err) {
         console.error('Failed to save rep count:', err);
       }
     }
-  }, [counts, exerciseTypes, user?.uid, saveRepCounterData]);
+  }, [counts, exerciseTypes, user?.uid, repCounterData, saveRepCounterData]);
 
   const handleAddExercise = () => {
     const newExercise = `exercise${localExerciseTypes.length + 1}`;
@@ -162,7 +180,7 @@ export default function RepCounter() {
   };
 
   const handleSaveConfiguration = async () => {
-    if (!user?.uid) return;
+    if (!user?.uid || !repCounterData) return;
 
     // Filter out empty exercises
     const validExercises = localExerciseTypes.filter(ex => ex.trim() !== '');
@@ -188,11 +206,15 @@ export default function RepCounter() {
       }
     });
 
-    // Save to Firebase
+    // Save to Firebase, preserving all historical data
+    const countsByDate = repCounterData.countsByDate || {};
     try {
       await saveRepCounterData({
         exerciseTypes: validExercises,
-        currentDayCounts: updatedCounts,
+        countsByDate: {
+          ...countsByDate,
+          [today]: updatedCounts,
+        },
         lastDate: today,
       });
 
