@@ -6,3 +6,6 @@ export { auth, db, storage, analytics } from "./config";
 export { useSaveUserLocation, useUserLocation, type UserLocation } from "./userSettings";
 export { useSavePaydaySettings, usePaydaySettings, type PaydaySettings } from "./userSettings";
 
+// Re-export rep counter hooks
+export { useSaveRepCounterData, useRepCounterData, type RepCounterData } from "./repCounter";
+

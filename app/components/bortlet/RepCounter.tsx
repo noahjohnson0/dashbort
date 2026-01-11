@@ -1,7 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Settings } from 'lucide-react';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '@/lib/firebase';
+import { useRepCounterData, useSaveRepCounterData, type RepCounterData } from '@/lib/firebase/repCounter';
 import {
   Dialog,
   DialogContent,
@@ -16,51 +19,71 @@ type ExerciseType = string;
 const DEFAULT_EXERCISE_TYPES: ExerciseType[] = ['pushup', 'squat', 'pullup'];
 
 export default function RepCounter() {
+  const [user] = useAuthState(auth);
+  const [repCounterData, dataLoading, dataError] = useRepCounterData(user?.uid || null);
+  const [saveRepCounterData, saveLoading, saveError] = useSaveRepCounterData(user?.uid || null);
+
   const [exerciseTypes, setExerciseTypes] = useState<ExerciseType[]>(DEFAULT_EXERCISE_TYPES);
   const [counts, setCounts] = useState<Record<ExerciseType, number>>({});
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [localExerciseTypes, setLocalExerciseTypes] = useState<ExerciseType[]>(DEFAULT_EXERCISE_TYPES);
   const [highlightedExercise, setHighlightedExercise] = useState<ExerciseType | null>(null);
+  const hasInitialized = useRef(false);
 
+  // Load data from Firebase
   useEffect(() => {
-    // Load exercise types from localStorage
-    const savedTypes = localStorage.getItem('repCounter_exerciseTypes');
-    if (savedTypes) {
-      try {
-        const parsed = JSON.parse(savedTypes);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setExerciseTypes(parsed);
-          setLocalExerciseTypes(parsed);
-        }
-      } catch (e) {
-        console.error('Failed to parse exercise types:', e);
-      }
-    }
-  }, []);
+    if (dataLoading || !user?.uid) return;
 
-  useEffect(() => {
-    // Load all counts from localStorage
     const today = new Date().toDateString();
-    const loadedCounts: Record<ExerciseType, number> = {};
+    
+    if (repCounterData) {
+      hasInitialized.current = true;
+      
+      // Use saved exercise types
+      const savedTypes = repCounterData.exerciseTypes.length > 0 
+        ? repCounterData.exerciseTypes 
+        : DEFAULT_EXERCISE_TYPES;
+      setExerciseTypes(savedTypes);
+      setLocalExerciseTypes(savedTypes);
 
-    exerciseTypes.forEach((exerciseType) => {
-      const storageKey = `repCount_${exerciseType}`;
-      const dateKey = `repCountDate_${exerciseType}`;
-      const saved = localStorage.getItem(storageKey);
-      const savedDate = localStorage.getItem(dateKey);
-
-      if (saved && savedDate === today) {
-        loadedCounts[exerciseType] = parseInt(saved, 10);
+      // Check if we need to reset counts for a new day
+      if (repCounterData.lastDate === today) {
+        // Use saved counts
+        setCounts(repCounterData.currentDayCounts || {});
       } else {
-        // Reset if it's a new day
-        loadedCounts[exerciseType] = 0;
-        localStorage.setItem(storageKey, '0');
-        localStorage.setItem(dateKey, today);
+        // Reset counts for new day
+        const resetCounts: Record<ExerciseType, number> = {};
+        savedTypes.forEach((exerciseType) => {
+          resetCounts[exerciseType] = 0;
+        });
+        setCounts(resetCounts);
+        
+        // Save reset data to Firebase
+        saveRepCounterData({
+          exerciseTypes: savedTypes,
+          currentDayCounts: resetCounts,
+          lastDate: today,
+        }).catch(console.error);
       }
-    });
-
-    setCounts(loadedCounts);
-  }, [exerciseTypes]);
+    } else if (!hasInitialized.current) {
+      // Initialize with defaults if no data exists (only once)
+      hasInitialized.current = true;
+      const initialCounts: Record<ExerciseType, number> = {};
+      DEFAULT_EXERCISE_TYPES.forEach((exerciseType) => {
+        initialCounts[exerciseType] = 0;
+      });
+      setExerciseTypes(DEFAULT_EXERCISE_TYPES);
+      setLocalExerciseTypes(DEFAULT_EXERCISE_TYPES);
+      setCounts(initialCounts);
+      
+      // Save initial data to Firebase
+      saveRepCounterData({
+        exerciseTypes: DEFAULT_EXERCISE_TYPES,
+        currentDayCounts: initialCounts,
+        lastDate: today,
+      }).catch(console.error);
+    }
+  }, [repCounterData, dataLoading, user?.uid, saveRepCounterData]);
 
   useEffect(() => {
     if (highlightedExercise) {
@@ -71,32 +94,54 @@ export default function RepCounter() {
     }
   }, [highlightedExercise]);
 
-  const increment = (exerciseType: ExerciseType) => {
+  const increment = useCallback(async (exerciseType: ExerciseType) => {
+    if (!user?.uid) return;
+
     const currentCount = counts[exerciseType] || 0;
     const newCount = currentCount + 1;
     const updatedCounts = { ...counts, [exerciseType]: newCount };
     setCounts(updatedCounts);
 
-    const storageKey = `repCount_${exerciseType}`;
-    localStorage.setItem(storageKey, newCount.toString());
-    localStorage.setItem(`repCountDate_${exerciseType}`, new Date().toDateString());
+    const today = new Date().toDateString();
+    
+    // Save to Firebase
+    try {
+      await saveRepCounterData({
+        exerciseTypes,
+        currentDayCounts: updatedCounts,
+        lastDate: today,
+      });
+    } catch (err) {
+      console.error('Failed to save rep count:', err);
+    }
 
     // Highlight the exercise card
     setHighlightedExercise(exerciseType);
-  };
+  }, [counts, exerciseTypes, user?.uid, saveRepCounterData]);
 
-  const decrement = (exerciseType: ExerciseType) => {
+  const decrement = useCallback(async (exerciseType: ExerciseType) => {
+    if (!user?.uid) return;
+
     const currentCount = counts[exerciseType] || 0;
     if (currentCount > 0) {
       const newCount = currentCount - 1;
       const updatedCounts = { ...counts, [exerciseType]: newCount };
       setCounts(updatedCounts);
 
-      const storageKey = `repCount_${exerciseType}`;
-      localStorage.setItem(storageKey, newCount.toString());
-      localStorage.setItem(`repCountDate_${exerciseType}`, new Date().toDateString());
+      const today = new Date().toDateString();
+      
+      // Save to Firebase
+      try {
+        await saveRepCounterData({
+          exerciseTypes,
+          currentDayCounts: updatedCounts,
+          lastDate: today,
+        });
+      } catch (err) {
+        console.error('Failed to save rep count:', err);
+      }
     }
-  };
+  }, [counts, exerciseTypes, user?.uid, saveRepCounterData]);
 
   const handleAddExercise = () => {
     const newExercise = `exercise${localExerciseTypes.length + 1}`;
@@ -116,7 +161,9 @@ export default function RepCounter() {
     setLocalExerciseTypes(updated);
   };
 
-  const handleSaveConfiguration = () => {
+  const handleSaveConfiguration = async () => {
+    if (!user?.uid) return;
+
     // Filter out empty exercises
     const validExercises = localExerciseTypes.filter(ex => ex.trim() !== '');
     if (validExercises.length === 0) {
@@ -124,14 +171,41 @@ export default function RepCounter() {
       return;
     }
 
-    // Save to localStorage
-    localStorage.setItem('repCounter_exerciseTypes', JSON.stringify(validExercises));
+    const today = new Date().toDateString();
+    
+    // Initialize counts for new exercise types
+    const updatedCounts: Record<ExerciseType, number> = { ...counts };
+    validExercises.forEach((exerciseType) => {
+      if (!(exerciseType in updatedCounts)) {
+        updatedCounts[exerciseType] = 0;
+      }
+    });
+    
+    // Remove counts for removed exercise types
+    Object.keys(updatedCounts).forEach((exerciseType) => {
+      if (!validExercises.includes(exerciseType)) {
+        delete updatedCounts[exerciseType];
+      }
+    });
 
-    // Update state
-    setExerciseTypes(validExercises);
+    // Save to Firebase
+    try {
+      await saveRepCounterData({
+        exerciseTypes: validExercises,
+        currentDayCounts: updatedCounts,
+        lastDate: today,
+      });
 
-    // Close dialog
-    setIsDialogOpen(false);
+      // Update state
+      setExerciseTypes(validExercises);
+      setCounts(updatedCounts);
+
+      // Close dialog
+      setIsDialogOpen(false);
+    } catch (err) {
+      console.error('Failed to save exercise types:', err);
+      alert('Failed to save exercise types. Please try again.');
+    }
   };
 
   return (
@@ -151,7 +225,18 @@ export default function RepCounter() {
           <Settings className="h-5 w-5" />
         </button>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {dataLoading && (
+        <div className="text-center text-zinc-600 dark:text-zinc-400 py-4">
+          Loading...
+        </div>
+      )}
+      {dataError && (
+        <div className="text-center text-red-600 dark:text-red-400 py-4">
+          Error loading data: {dataError.message}
+        </div>
+      )}
+      {!dataLoading && !dataError && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {exerciseTypes.map((exerciseType) => (
           <div
             key={exerciseType}
@@ -187,7 +272,8 @@ export default function RepCounter() {
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
@@ -234,9 +320,10 @@ export default function RepCounter() {
             </button>
             <button
               onClick={handleSaveConfiguration}
-              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-md font-semibold transition-colors"
+              disabled={saveLoading}
+              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:bg-zinc-300 dark:disabled:bg-zinc-600 disabled:cursor-not-allowed text-white rounded-md font-semibold transition-colors"
             >
-              Save
+              {saveLoading ? 'Saving...' : 'Save'}
             </button>
           </DialogFooter>
         </DialogContent>
