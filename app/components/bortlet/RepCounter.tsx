@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Settings } from 'lucide-react';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth } from '@/lib/firebase';
+import type { BortletProps } from '@/lib/bortlets/types';
+import { BortletContainer, BortletHeader, BortletError } from '@/lib/bortlets/components';
 import { useRepCounterData, useSaveRepCounterData, type RepCounterData } from '@/lib/firebase/repCounter';
 import {
   Dialog,
@@ -18,10 +18,9 @@ type ExerciseType = string;
 
 const DEFAULT_EXERCISE_TYPES: ExerciseType[] = ['pushup', 'squat', 'pullup'];
 
-export default function RepCounter() {
-  const [user] = useAuthState(auth);
-  const [repCounterData, dataLoading, dataError] = useRepCounterData(user?.uid || null);
-  const [saveRepCounterData, saveLoading, saveError] = useSaveRepCounterData(user?.uid || null);
+export default function RepCounter({ userId }: BortletProps) {
+  const [repCounterData, dataLoading, dataError] = useRepCounterData(userId);
+  const [saveRepCounterData, saveLoading, saveError] = useSaveRepCounterData(userId);
 
   const [exerciseTypes, setExerciseTypes] = useState<ExerciseType[]>(DEFAULT_EXERCISE_TYPES);
   const [counts, setCounts] = useState<Record<ExerciseType, number>>({});
@@ -32,7 +31,7 @@ export default function RepCounter() {
 
   // Load data from Firebase
   useEffect(() => {
-    if (dataLoading || !user?.uid) return;
+    if (dataLoading || !userId) return;
 
     const today = new Date().toDateString();
     
@@ -93,7 +92,7 @@ export default function RepCounter() {
         lastDate: today,
       }).catch(console.error);
     }
-  }, [repCounterData, dataLoading, user?.uid, saveRepCounterData]);
+  }, [repCounterData, dataLoading, userId, saveRepCounterData]);
 
   useEffect(() => {
     if (highlightedExercise) {
@@ -105,7 +104,7 @@ export default function RepCounter() {
   }, [highlightedExercise]);
 
   const increment = useCallback(async (exerciseType: ExerciseType) => {
-    if (!user?.uid || !repCounterData) return;
+    if (!userId || !repCounterData) return;
 
     const currentCount = counts[exerciseType] || 0;
     const newCount = currentCount + 1;
@@ -131,10 +130,10 @@ export default function RepCounter() {
 
     // Highlight the exercise card
     setHighlightedExercise(exerciseType);
-  }, [counts, exerciseTypes, user?.uid, repCounterData, saveRepCounterData]);
+  }, [counts, exerciseTypes, userId, repCounterData, saveRepCounterData]);
 
   const decrement = useCallback(async (exerciseType: ExerciseType) => {
-    if (!user?.uid || !repCounterData) return;
+    if (!userId || !repCounterData) return;
 
     const currentCount = counts[exerciseType] || 0;
     if (currentCount > 0) {
@@ -159,7 +158,7 @@ export default function RepCounter() {
         console.error('Failed to save rep count:', err);
       }
     }
-  }, [counts, exerciseTypes, user?.uid, repCounterData, saveRepCounterData]);
+  }, [counts, exerciseTypes, userId, repCounterData, saveRepCounterData]);
 
   const handleAddExercise = () => {
     const newExercise = `exercise${localExerciseTypes.length + 1}`;
@@ -180,7 +179,7 @@ export default function RepCounter() {
   };
 
   const handleSaveConfiguration = async () => {
-    if (!user?.uid || !repCounterData) return;
+    if (!userId || !repCounterData) return;
 
     // Filter out empty exercises
     const validExercises = localExerciseTypes.filter(ex => ex.trim() !== '');
@@ -231,71 +230,82 @@ export default function RepCounter() {
   };
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-6 border border-zinc-200 dark:border-zinc-800 w-full h-full flex flex-col">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 select-none">
-          Rep Counter
-        </h2>
-        <button
-          onClick={() => {
-            setLocalExerciseTypes(exerciseTypes);
-            setIsDialogOpen(true);
-          }}
-          className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
-          aria-label="Configure rep counter"
-        >
-          <Settings className="h-5 w-5" />
-        </button>
-      </div>
-      {dataLoading && (
-        <div className="text-center text-zinc-600 dark:text-zinc-400 py-4">
-          Loading...
-        </div>
-      )}
-      {dataError && (
-        <div className="text-center text-red-600 dark:text-red-400 py-4">
-          Error loading data: {dataError.message}
-        </div>
-      )}
-      {!dataLoading && !dataError && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {exerciseTypes.map((exerciseType) => (
-          <div
-            key={exerciseType}
-            onClick={() => increment(exerciseType)}
-            className={`cursor-pointer hover:opacity-80 transition-all duration-300 rounded-lg p-3 border ${highlightedExercise === exerciseType
-              ? 'bg-green-500 dark:bg-green-600 border-green-600 dark:border-green-700'
-              : 'bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700'
-              }`}
+    <BortletContainer>
+      <BortletHeader
+        title="Rep Counter"
+        action={
+          <button
+            onClick={() => {
+              setLocalExerciseTypes(exerciseTypes);
+              setIsDialogOpen(true);
+            }}
+            className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+            aria-label="Configure rep counter"
           >
-            <div className={`text-xs font-semibold mb-1.5 text-center select-none uppercase tracking-wide ${highlightedExercise === exerciseType
-              ? 'text-white'
-              : 'text-zinc-600 dark:text-zinc-400'
-              }`}>
-              {exerciseType}
-            </div>
-            <div className={`text-2xl font-bold mb-2 text-center select-none ${highlightedExercise === exerciseType
-              ? 'text-white'
-              : 'text-zinc-900 dark:text-zinc-100'
-              }`}>
-              {counts[exerciseType] || 0}
-            </div>
-            <div className="flex gap-2 justify-center">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  decrement(exerciseType);
-                }}
-                disabled={(counts[exerciseType] || 0) === 0}
-                className="px-3 py-1.5 bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 disabled:bg-zinc-300 dark:disabled:bg-zinc-600 disabled:cursor-not-allowed text-white rounded-md font-semibold transition-colors select-none text-xs"
+            <Settings className="h-5 w-5" />
+          </button>
+        }
+      />
+      <div className="flex-1 flex flex-col justify-center">
+        {dataLoading && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="rounded-lg p-3 border bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700"
               >
-                −
-              </button>
-            </div>
+                <div className="h-4 w-20 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse mb-1.5 mx-auto" />
+                <div className="h-8 w-12 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse mb-2 mx-auto" />
+                <div className="flex gap-2 justify-center">
+                  <div className="h-7 w-12 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse" />
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-        </div>
-      )}
+        )}
+        {dataError && (
+          <BortletError error={dataError} message={`Error loading data: ${dataError.message}`} />
+        )}
+        {!dataLoading && !dataError && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {exerciseTypes.map((exerciseType) => (
+            <div
+              key={exerciseType}
+              onClick={() => increment(exerciseType)}
+              className={`cursor-pointer hover:opacity-80 transition-all duration-300 rounded-lg p-3 border ${highlightedExercise === exerciseType
+                ? 'bg-green-500 dark:bg-green-600 border-green-600 dark:border-green-700'
+                : 'bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700'
+                }`}
+            >
+              <div className={`text-xs font-semibold mb-1.5 text-center select-none uppercase tracking-wide ${highlightedExercise === exerciseType
+                ? 'text-white'
+                : 'text-zinc-600 dark:text-zinc-400'
+                }`}>
+                {exerciseType}
+              </div>
+              <div className={`text-2xl font-bold mb-2 text-center select-none ${highlightedExercise === exerciseType
+                ? 'text-white'
+                : 'text-zinc-900 dark:text-zinc-100'
+                }`}>
+                {counts[exerciseType] || 0}
+              </div>
+              <div className="flex gap-2 justify-center">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    decrement(exerciseType);
+                  }}
+                  disabled={(counts[exerciseType] || 0) === 0}
+                  className="px-3 py-1.5 bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 disabled:bg-zinc-300 dark:disabled:bg-zinc-600 disabled:cursor-not-allowed text-white rounded-md font-semibold transition-colors select-none text-xs"
+                >
+                  −
+                </button>
+              </div>
+            </div>
+          ))}
+          </div>
+        )}
+      </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
@@ -350,6 +360,6 @@ export default function RepCounter() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </BortletContainer>
   );
 }

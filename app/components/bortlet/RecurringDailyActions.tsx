@@ -1,9 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '@/lib/firebase';
-import { useRecurringActions, useSaveRecurringActions, type RecurringAction } from '@/lib/firebase/recurringActions';
+import { 
+  useRecurringActions, 
+  useSaveRecurringActions, 
+  useDailyActionsData,
+  useSaveDailyActionsData,
+  type RecurringAction 
+} from '@/lib/firebase/recurringActions';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -16,13 +22,18 @@ interface SettingsModalProps {
 function SettingsModal({ isOpen, onClose, actions, onSave, saving }: SettingsModalProps) {
   const [localActions, setLocalActions] = useState<RecurringAction[]>(actions);
 
+  useEffect(() => {
+    if (isOpen) {
+      setLocalActions(actions);
+    }
+  }, [isOpen, actions]);
+
   if (!isOpen) return null;
 
   const handleAddAction = () => {
     const newAction: RecurringAction = {
       id: Date.now().toString(),
       name: '',
-      completed: false,
     };
     setLocalActions([...localActions, newAction]);
   };
@@ -109,38 +120,229 @@ function SettingsModal({ isOpen, onClose, actions, onSave, saving }: SettingsMod
 
 export default function RecurringDailyActions() {
   const [user] = useAuthState(auth);
-  const [actions, loading, error] = useRecurringActions(user?.uid || null);
-  const [saveActions, saving, saveError] = useSaveRecurringActions(user?.uid || null);
+  const [actions, actionsLoading, actionsError] = useRecurringActions(user?.uid || null);
+  const [saveActions, savingActions, saveActionsError] = useSaveRecurringActions(user?.uid || null);
+  const [dailyData, dailyLoading, dailyError] = useDailyActionsData(user?.uid || null);
+  const [saveDailyData, savingDaily, saveDailyError] = useSaveDailyActionsData(user?.uid || null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [todayCompletions, setTodayCompletions] = useState<Record<string, boolean>>({});
+  const hasInitialized = useRef(false);
+
+  const today = new Date().toDateString();
+
+  // Initialize today's completions from daily data
+  useEffect(() => {
+    if (dailyLoading || !user?.uid || actionsLoading) return;
+
+    if (dailyData) {
+      hasInitialized.current = true;
+      
+      // Check if we need to reset for a new day
+      if (dailyData.lastDate === today) {
+        // Use saved completions for today
+        setTodayCompletions(dailyData.completionsByDate[today] || {});
+      } else {
+        // Reset completions for new day (preserve historical data)
+        const resetCompletions: Record<string, boolean> = {};
+        const actionsList = actions || [];
+        actionsList.forEach((action) => {
+          resetCompletions[action.id] = false;
+        });
+        setTodayCompletions(resetCompletions);
+        
+        // Save reset data to Firebase, preserving all historical data
+        const updatedCompletionsByDate = {
+          ...dailyData.completionsByDate,
+          [today]: resetCompletions,
+        };
+        
+        saveDailyData({
+          completionsByDate: updatedCompletionsByDate,
+          lastDate: today,
+        }).catch(console.error);
+      }
+    } else if (!hasInitialized.current) {
+      // Initialize with defaults if no data exists (only once)
+      hasInitialized.current = true;
+      const initialCompletions: Record<string, boolean> = {};
+      const actionsList = actions || [];
+      actionsList.forEach((action) => {
+        initialCompletions[action.id] = false;
+      });
+      setTodayCompletions(initialCompletions);
+      
+      // Save initial data to Firebase
+      saveDailyData({
+        completionsByDate: {
+          [today]: initialCompletions,
+        },
+        lastDate: today,
+      }).catch(console.error);
+    }
+  }, [dailyData, dailyLoading, actions, actionsLoading, user?.uid, today, saveDailyData]);
+
+  // Update completions when actions change (new actions added/removed)
+  useEffect(() => {
+    if (dailyLoading || actionsLoading || !dailyData || !actions) return;
+    
+    const actionsList = actions || [];
+    const currentDateCompletions = dailyData.completionsByDate[today] || {};
+    const updatedCompletions = { ...currentDateCompletions };
+    let needsUpdate = false;
+
+    // Add missing actions (set to false)
+    actionsList.forEach((action) => {
+      if (!(action.id in updatedCompletions)) {
+        updatedCompletions[action.id] = false;
+        needsUpdate = true;
+      }
+    });
+
+    // Remove completions for actions that no longer exist
+    Object.keys(updatedCompletions).forEach((actionId) => {
+      if (!actionsList.find((a) => a.id === actionId)) {
+        delete updatedCompletions[actionId];
+        needsUpdate = true;
+      }
+    });
+
+    if (needsUpdate && dailyData.lastDate === today) {
+      setTodayCompletions(updatedCompletions);
+      const updatedCompletionsByDate = {
+        ...dailyData.completionsByDate,
+        [today]: updatedCompletions,
+      };
+      
+      saveDailyData({
+        completionsByDate: updatedCompletionsByDate,
+        lastDate: today,
+      }).catch(console.error);
+    }
+  }, [actions, dailyData, dailyLoading, actionsLoading, today, saveDailyData]);
 
   const handleToggleComplete = async (id: string) => {
-    if (!user || !actions) return;
+    if (!user || !dailyData || !actions) return;
 
-    const updatedActions = actions.map((action) =>
-      action.id === id ? { ...action, completed: !action.completed } : action
-    );
+    const currentCompleted = todayCompletions[id] || false;
+    const previousCompletions = { ...todayCompletions };
+    const updatedCompletions = {
+      ...todayCompletions,
+      [id]: !currentCompleted,
+    };
+    setTodayCompletions(updatedCompletions);
 
+    // Save to Firebase, preserving all historical data
+    const completionsByDate = dailyData.completionsByDate || {};
     try {
-      await saveActions(updatedActions);
+      await saveDailyData({
+        completionsByDate: {
+          ...completionsByDate,
+          [today]: updatedCompletions,
+        },
+        lastDate: today,
+      });
     } catch (err) {
       console.error('Failed to update action:', err);
+      // Revert on error
+      setTodayCompletions(previousCompletions);
     }
   };
 
   const handleSaveSettings = async (newActions: RecurringAction[]) => {
     try {
       await saveActions(newActions);
+      
+      // Initialize completions for new actions on current date
+      if (dailyData) {
+        const currentDateCompletions = dailyData.completionsByDate[today] || {};
+        const updatedCompletions = { ...currentDateCompletions };
+        let needsUpdate = false;
+
+        newActions.forEach((action) => {
+          if (!(action.id in updatedCompletions)) {
+            updatedCompletions[action.id] = false;
+            needsUpdate = true;
+          }
+        });
+
+        // Remove completions for actions that no longer exist
+        Object.keys(updatedCompletions).forEach((actionId) => {
+          if (!newActions.find((a) => a.id === actionId)) {
+            delete updatedCompletions[actionId];
+            needsUpdate = true;
+          }
+        });
+
+        if (needsUpdate) {
+          const updatedCompletionsByDate = {
+            ...dailyData.completionsByDate,
+            [today]: updatedCompletions,
+          };
+          
+          await saveDailyData({
+            completionsByDate: updatedCompletionsByDate,
+            lastDate: today,
+          });
+          
+          setTodayCompletions(updatedCompletions);
+        }
+      }
+      
       setIsSettingsOpen(false);
     } catch (err) {
       console.error('Failed to save actions:', err);
     }
   };
 
+  const loading = actionsLoading || dailyLoading;
+  const error = actionsError || dailyError;
+  const saving = savingActions || savingDaily;
+  const saveError = saveActionsError || saveDailyError;
+
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-6 border border-zinc-200 dark:border-zinc-800 select-none w-full h-full flex flex-col">
-        <div className="text-zinc-600 dark:text-zinc-400">Loading...</div>
+      <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-6 border border-zinc-200 dark:border-zinc-800 select-none w-full h-full flex flex-col overflow-y-auto">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+            Recurring Daily Actions
+          </h2>
+          <div className="p-2 opacity-0 pointer-events-none">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+            </svg>
+          </div>
+        </div>
+        <div className="mb-4 opacity-0 pointer-events-none">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm text-zinc-600 dark:text-zinc-400">
+              Progress: 0 / 0
+            </span>
+          </div>
+          <div className="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-2">
+            <div className="bg-blue-500 h-2 rounded-full" style={{ width: '0%' }} />
+          </div>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-zinc-600 dark:text-zinc-400">Loading...</div>
+        </div>
       </div>
     );
   }
@@ -154,7 +356,7 @@ export default function RecurringDailyActions() {
   }
 
   const actionsList = actions || [];
-  const completedCount = actionsList.filter((a) => a.completed).length;
+  const completedCount = actionsList.filter((a) => todayCompletions[a.id]).length;
   const totalCount = actionsList.length;
 
   return (
@@ -216,30 +418,33 @@ export default function RecurringDailyActions() {
           </div>
         ) : (
           <div className="space-y-2">
-            {actionsList.map((action) => (
-              <div
-                key={action.id}
-                className="flex items-center gap-3 p-3 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-                onClick={() => handleToggleComplete(action.id)}
-              >
-                <input
-                  type="checkbox"
-                  checked={action.completed}
-                  onChange={() => handleToggleComplete(action.id)}
-                  onClick={(e) => e.stopPropagation()}
-                  className="w-5 h-5 text-blue-500 rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                />
-                <span
-                  className={`flex-1 ${
-                    action.completed
-                      ? 'line-through text-zinc-400 dark:text-zinc-500'
-                      : 'text-zinc-900 dark:text-zinc-100'
-                  }`}
+            {actionsList.map((action) => {
+              const isCompleted = todayCompletions[action.id] || false;
+              return (
+                <div
+                  key={action.id}
+                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                  onClick={() => handleToggleComplete(action.id)}
                 >
-                  {action.name}
-                </span>
-              </div>
-            ))}
+                  <input
+                    type="checkbox"
+                    checked={isCompleted}
+                    onChange={() => handleToggleComplete(action.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-5 h-5 text-blue-500 rounded focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  />
+                  <span
+                    className={`flex-1 ${
+                      isCompleted
+                        ? 'line-through text-zinc-400 dark:text-zinc-500'
+                        : 'text-zinc-900 dark:text-zinc-100'
+                    }`}
+                  >
+                    {action.name}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         )}
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
 import { useSignOut } from 'react-firebase-hooks/auth';
 import { auth } from '@/lib/firebase';
@@ -15,13 +16,19 @@ import {
 import { LogOut, Settings } from 'lucide-react';
 import type { User } from 'firebase/auth';
 import { ThemeToggle } from './ThemeToggle';
+import { BortConfigurationModal } from './BortConfigurationModal';
+import { Button } from '@/components/ui/button';
 
 interface HeaderProps {
     user: User;
+    filledSpaces: number;
+    availableSpaces: number;
+    totalSpaces: number;
 }
 
-export default function Header({ user }: HeaderProps) {
+export default function Header({ user, filledSpaces, availableSpaces, totalSpaces }: HeaderProps) {
     const [signOut, , signOutError] = useSignOut(auth);
+    const [configModalOpen, setConfigModalOpen] = useState(false);
 
     return (
         <header className="mb-8 flex items-center justify-between">
@@ -39,9 +46,29 @@ export default function Header({ user }: HeaderProps) {
                     Dash<span className="text-blue-600 dark:text-blue-400">bort</span>
                 </h1>
             </div>
-            <div className="flex items-center gap-3">
-                <ThemeToggle />
-                <DropdownMenu>
+            <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 text-sm text-zinc-600 dark:text-zinc-400">
+                    <span>
+                        <span className="font-medium text-zinc-900 dark:text-zinc-100">{filledSpaces}</span> filled
+                    </span>
+                    <span>
+                        <span className="font-medium text-zinc-900 dark:text-zinc-100">{availableSpaces}</span> available
+                    </span>
+                    <span className="text-zinc-400 dark:text-zinc-600">
+                        ({totalSpaces} total)
+                    </span>
+                </div>
+                <div className="flex items-center gap-3">
+                    <ThemeToggle />
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setConfigModalOpen(true)}
+                        aria-label="Bort Configuration"
+                    >
+                        <Settings className="h-5 w-5" />
+                    </Button>
+                    <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600">
                             <Avatar className="h-10 w-10">
@@ -59,10 +86,6 @@ export default function Header({ user }: HeaderProps) {
                             </div>
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="cursor-pointer">
-                            <Settings className="mr-2 h-4 w-4" />
-                            <span>Bort Configuration</span>
-                        </DropdownMenuItem>
                         <DropdownMenuItem
                             onClick={async () => {
                                 const success = await signOut();
@@ -76,8 +99,14 @@ export default function Header({ user }: HeaderProps) {
                             <span>Sign out</span>
                         </DropdownMenuItem>
                     </DropdownMenuContent>
-                </DropdownMenu>
+                    </DropdownMenu>
+                </div>
             </div>
+            <BortConfigurationModal 
+                user={user} 
+                open={configModalOpen} 
+                onOpenChange={setConfigModalOpen} 
+            />
         </header>
     );
 }

@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, useSavePaydaySettings, usePaydaySettings } from '@/lib/firebase';
+import type { BortletProps } from '@/lib/bortlets/types';
+import { BortletContainerSmall } from '@/lib/bortlets/components';
+import { useSavePaydaySettings, usePaydaySettings } from '@/lib/firebase';
 
 const PAYDAY_STORAGE_KEY_1 = 'dashbort_payday_day_1';
 const PAYDAY_STORAGE_KEY_2 = 'dashbort_payday_day_2';
@@ -25,10 +26,9 @@ function adjustToBusinessDay(date: Date): Date {
   return date;
 }
 
-export default function DaysUntilPayday() {
-  const [user] = useAuthState(auth);
-  const [savedPayday, paydayLoading, paydayError] = usePaydaySettings(user?.uid || null);
-  const [savePayday, savePaydayLoading, savePaydayError] = useSavePaydaySettings(user?.uid || null);
+export default function DaysUntilPayday({ userId }: BortletProps) {
+  const [savedPayday, paydayLoading, paydayError] = usePaydaySettings(userId);
+  const [savePayday, savePaydayLoading, savePaydayError] = useSavePaydaySettings(userId);
 
   const [daysUntilPayday, setDaysUntilPayday] = useState<number | null>(null);
   const [nextPaydayDate, setNextPaydayDate] = useState<Date | null>(null);
@@ -116,7 +116,7 @@ export default function DaysUntilPayday() {
     localStorage.setItem(PAYDAY_STORAGE_KEY_2, day2Str);
 
     // Save to Firebase
-    if (user?.uid) {
+    if (userId) {
       try {
         await savePayday({
           dayOfMonth1,
@@ -136,7 +136,7 @@ export default function DaysUntilPayday() {
   useEffect(() => {
     // Reset initialization when user changes
     hasInitialized.current = false;
-  }, [user?.uid]);
+  }, [userId]);
 
   useEffect(() => {
     // Skip if already initialized
@@ -146,7 +146,7 @@ export default function DaysUntilPayday() {
     if (paydayLoading) return;
 
     // First, try to load payday from Firebase if user is authenticated
-    if (user?.uid && savedPayday) {
+    if (userId && savedPayday) {
       // Handle migration from old single-day format
       if ('dayOfMonth' in savedPayday && !('dayOfMonth1' in savedPayday)) {
         // Old format - migrate to new format
@@ -203,7 +203,7 @@ export default function DaysUntilPayday() {
 
     hasInitialized.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid, savedPayday, paydayLoading]);
+  }, [userId, savedPayday, paydayLoading]);
 
   // Update countdown every minute
   useEffect(() => {
@@ -238,7 +238,7 @@ export default function DaysUntilPayday() {
   };
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-4 border border-zinc-200 dark:border-zinc-800 select-none w-full h-full flex flex-col overflow-hidden">
+    <BortletContainerSmall className="select-none overflow-hidden">
       {isEditing ? (
         <div className="space-y-4">
           <div>
@@ -325,7 +325,11 @@ export default function DaysUntilPayday() {
       ) : (
         <>
           {paydayLoading ? (
-            <div className="text-zinc-600 dark:text-zinc-400 text-center">Loading...</div>
+            <div className="flex flex-col gap-2 flex-1 min-h-0 justify-center">
+              <div className="text-center">
+                <div className="text-zinc-600 dark:text-zinc-400">Loading...</div>
+              </div>
+            </div>
           ) : daysUntilPayday === null ? (
             <div className="text-zinc-600 dark:text-zinc-400 text-sm text-center">
               Please set your payday day
@@ -348,7 +352,7 @@ export default function DaysUntilPayday() {
           )}
         </>
       )}
-    </div>
+    </BortletContainerSmall>
   );
 }
 

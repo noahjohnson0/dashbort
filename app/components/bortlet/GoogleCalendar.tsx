@@ -221,7 +221,15 @@ export default function GoogleCalendar() {
   if (loadingAuth || loadingSettings) {
     return (
       <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-6 border border-zinc-200 dark:border-zinc-800 w-full h-full flex flex-col">
-        <div className="flex items-center justify-center h-full">
+        <div className="flex items-center justify-between mb-4 flex-shrink-0">
+          <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 select-none">
+            Calendar
+          </h2>
+          <div className="p-2 opacity-0 pointer-events-none">
+            <Settings className="h-5 w-5" />
+          </div>
+        </div>
+        <div className="flex-1 flex items-center justify-center min-h-0">
           <div className="text-zinc-600 dark:text-zinc-400">Loading...</div>
         </div>
       </div>

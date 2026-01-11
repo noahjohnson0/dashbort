@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Sunrise, Sunset, MapPin, X } from 'lucide-react';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, useSaveUserLocation, useUserLocation } from '@/lib/firebase';
+import type { BortletProps } from '@/lib/bortlets/types';
+import { BortletContainer, BortletHeader, BortletLoading, BortletError } from '@/lib/bortlets/components';
+import { useSaveUserLocation, useUserLocation } from '@/lib/firebase';
 
 interface SunTimes {
   sunrise: string;
@@ -14,10 +15,9 @@ interface SunTimes {
 const LOCATION_STORAGE_KEY = 'dashbort_location_zipcode';
 const LOCATION_NAME_KEY = 'dashbort_location_name';
 
-export default function SunriseSunset() {
-  const [user] = useAuthState(auth);
-  const [savedLocation, locationLoading, locationError] = useUserLocation(user?.uid || null);
-  const [saveLocation, saveLocationLoading, saveLocationError] = useSaveUserLocation(user?.uid || null);
+export default function SunriseSunset({ userId }: BortletProps) {
+  const [savedLocation, locationLoading, locationError] = useUserLocation(userId);
+  const [saveLocation, saveLocationLoading, saveLocationError] = useSaveUserLocation(userId);
   
   const [sunTimes, setSunTimes] = useState<SunTimes | null>(null);
   const [loading, setLoading] = useState(true);
@@ -117,7 +117,7 @@ export default function SunriseSunset() {
         setIsEditingLocation(false);
         
         // Save location to Firebase
-        if (user?.uid) {
+        if (userId) {
           try {
             await saveLocation({
               latitude: lat,
@@ -152,7 +152,7 @@ export default function SunriseSunset() {
           setLocation({ lat: latitude, lon: longitude });
           
           // Save location to Firebase
-          if (user?.uid) {
+          if (userId) {
             try {
               await saveLocation({
                 latitude,
@@ -203,7 +203,7 @@ export default function SunriseSunset() {
   useEffect(() => {
     // Reset initialization when user changes
     hasInitialized.current = false;
-  }, [user?.uid]);
+  }, [userId]);
 
   useEffect(() => {
     // Skip if already initialized
@@ -213,7 +213,7 @@ export default function SunriseSunset() {
     if (locationLoading) return;
     
     // First, try to load location from Firebase if user is authenticated
-    if (user?.uid && savedLocation) {
+    if (userId && savedLocation) {
       setLocation({ lat: savedLocation.latitude, lon: savedLocation.longitude });
       fetchSunTimes(savedLocation.latitude, savedLocation.longitude);
       hasInitialized.current = true;
@@ -236,101 +236,120 @@ export default function SunriseSunset() {
     
     hasInitialized.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid, savedLocation, locationLoading]);
+  }, [userId, savedLocation, locationLoading]);
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-6 border border-zinc-200 dark:border-zinc-800 select-none w-full h-full flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-          Sunrise & Sunset
-        </h2>
-        <button
-          onClick={() => setIsEditingLocation(!isEditingLocation)}
-          className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
-          aria-label="Edit location"
-        >
-          {isEditingLocation ? <X className="h-5 w-5" /> : <MapPin className="h-5 w-5" />}
-        </button>
-      </div>
+    <BortletContainer className="select-none">
+      <BortletHeader
+        title="Sunrise & Sunset"
+        action={
+          <button
+            onClick={() => setIsEditingLocation(!isEditingLocation)}
+            className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+            aria-label="Edit location"
+          >
+            {isEditingLocation ? <X className="h-5 w-5" /> : <MapPin className="h-5 w-5" />}
+          </button>
+        }
+      />
 
-      {isEditingLocation ? (
-        <div className="space-y-4">
-          <form onSubmit={handleZipcodeSubmit} className="space-y-3">
-            <div>
-              <label htmlFor="zipcode" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                Zipcode
-              </label>
-              <div className="flex gap-2">
-                <input
-                  id="zipcode"
-                  type="text"
-                  value={zipcode}
-                  onChange={(e) => setZipcode(e.target.value)}
-                  placeholder="Enter zipcode"
-                  className="flex-1 px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  disabled={isGeocoding}
-                />
+      <div className="flex-1 flex flex-col justify-center">
+        {isEditingLocation ? (
+          <div className="space-y-4">
+            <form onSubmit={handleZipcodeSubmit} className="space-y-3">
+              <div>
+                <label htmlFor="zipcode" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                  Zipcode
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    id="zipcode"
+                    type="text"
+                    value={zipcode}
+                    onChange={(e) => setZipcode(e.target.value)}
+                    placeholder="Enter zipcode"
+                    className="flex-1 px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={isGeocoding}
+                  />
+                  <button
+                    type="submit"
+                    disabled={isGeocoding || !zipcode.trim()}
+                    className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {isGeocoding ? '...' : 'Save'}
+                  </button>
+                </div>
+              </div>
+              {zipcode && (
                 <button
-                  type="submit"
-                  disabled={isGeocoding || !zipcode.trim()}
-                  className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  type="button"
+                  onClick={handleUseCurrentLocation}
+                  className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
                 >
-                  {isGeocoding ? '...' : 'Save'}
+                  Use current location instead
                 </button>
-              </div>
-            </div>
-            {zipcode && (
-              <button
-                type="button"
-                onClick={handleUseCurrentLocation}
-                className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                Use current location instead
-              </button>
-            )}
-          </form>
-          {error && (
-            <div className="text-red-600 dark:text-red-400 text-sm">{error}</div>
-          )}
-        </div>
-      ) : (
-        <>
-          {loading ? (
-            <div className="text-zinc-600 dark:text-zinc-400">Loading...</div>
-          ) : error && !sunTimes ? (
-            <div className="text-red-600 dark:text-red-400 text-sm">{error}</div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <Sunrise className="h-8 w-8 text-orange-500" />
-                <div>
-                  <div className="text-sm text-zinc-600 dark:text-zinc-400">Sunrise</div>
-                  <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                    {sunTimes?.sunrise}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Sunset className="h-8 w-8 text-orange-600" />
-                <div>
-                  <div className="text-sm text-zinc-600 dark:text-zinc-400">Sunset</div>
-                  <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                    {sunTimes?.sunset}
-                  </div>
-                </div>
-              </div>
-              {(locationName || zipcode) && (
-                <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800">
-                  <div className="text-xs text-zinc-500 dark:text-zinc-500 mt-1">
-                    Location: {locationName || zipcode}
-                  </div>
-                </div>
               )}
-            </div>
-          )}
-        </>
-      )}
-    </div>
+            </form>
+            {error && (
+              <div className="text-red-600 dark:text-red-400 text-sm">{error}</div>
+            )}
+          </div>
+        ) : (
+          <>
+            {loading ? (
+              <div className="flex items-center justify-around gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse" />
+                  <div>
+                    <div className="h-4 w-16 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse mb-2" />
+                    <div className="h-8 w-24 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse" />
+                  <div>
+                    <div className="h-4 w-16 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse mb-2" />
+                    <div className="h-8 w-24 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse" />
+                  </div>
+                </div>
+              </div>
+            ) : error && !sunTimes ? (
+              <div className="text-red-600 dark:text-red-400 text-sm">{error}</div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-around gap-4">
+                  <div className="flex items-center gap-3">
+                    <Sunrise className="h-8 w-8 text-orange-500" />
+                    <div>
+                      <div className="text-sm text-zinc-600 dark:text-zinc-400">Sunrise</div>
+                      <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+                        {sunTimes?.sunrise}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Sunset className="h-8 w-8 text-orange-600" />
+                    <div>
+                      <div className="text-sm text-zinc-600 dark:text-zinc-400">Sunset</div>
+                      <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+                        {sunTimes?.sunset}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {(locationName || zipcode) && (
+                  <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                    <div className="text-xs text-zinc-500 dark:text-zinc-500 mt-1 text-center">
+                      Location: {locationName || zipcode}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </BortletContainer>
   );
 }
 

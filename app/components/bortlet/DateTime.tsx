@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import type { BortletProps } from '@/lib/bortlets/types';
+import { BortletContainerSmall } from '@/lib/bortlets/components';
 
-export default function DateTime() {
+export default function DateTime({ userId }: BortletProps) {
   const [dateTime, setDateTime] = useState(new Date());
 
   useEffect(() => {
@@ -28,7 +30,7 @@ export default function DateTime() {
   }) || dateTime.toTimeString();
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-4 border border-zinc-200 dark:border-zinc-800 w-full h-full flex flex-col overflow-hidden">
+    <BortletContainerSmall className="overflow-hidden">
       <div className="flex flex-col gap-2 flex-1 min-h-0 justify-center">
         <div className="text-center">
           <div className="text-3xl font-mono font-bold text-zinc-900 dark:text-zinc-100">
@@ -41,7 +43,7 @@ export default function DateTime() {
           </div>
         </div>
       </div>
-    </div>
+    </BortletContainerSmall>
   );
 }
 

@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Briefcase } from 'lucide-react';
+import type { BortletProps } from '@/lib/bortlets/types';
+import { BortletContainer, BortletHeader, BortletLoading } from '@/lib/bortlets/components';
 import {
   Dialog,
   DialogContent,
@@ -10,8 +12,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useSaveWorkTimerSettings, useWorkTimerSettings } from '@/lib/firebase';
 
-export default function WorkTimer() {
+export default function WorkTimer({ userId }: BortletProps) {
+  const [savedWorkTimer, workTimerLoading, workTimerError] = useWorkTimerSettings(userId);
+  const [saveWorkTimer, saveWorkTimerLoading, saveWorkTimerError] = useSaveWorkTimerSettings(userId);
+
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [percentWorked, setPercentWorked] = useState(0);
   const [percentLeft, setPercentLeft] = useState(100);
@@ -20,12 +27,35 @@ export default function WorkTimer() {
   const [workStartMinute, setWorkStartMinute] = useState(0);
   const [workEndHour, setWorkEndHour] = useState(17);
   const [workEndMinute, setWorkEndMinute] = useState(0);
+  const [disabledWeekends, setDisabledWeekends] = useState(false);
   const hasInitialized = useRef(false);
+  const hasAttemptedMigration = useRef(false);
 
-  // Load settings from localStorage on mount
+  // Reset initialization when user changes
+  useEffect(() => {
+    hasInitialized.current = false;
+    hasAttemptedMigration.current = false;
+  }, [userId]);
+
+  // Load settings from Firebase or localStorage (for migration)
   useEffect(() => {
     if (hasInitialized.current) return;
 
+    // Wait for work timer loading to complete
+    if (workTimerLoading) return;
+
+    // First, try to load from Firebase if user is authenticated
+    if (userId && savedWorkTimer) {
+      setWorkStartHour(savedWorkTimer.workStartHour);
+      setWorkStartMinute(savedWorkTimer.workStartMinute);
+      setWorkEndHour(savedWorkTimer.workEndHour);
+      setWorkEndMinute(savedWorkTimer.workEndMinute);
+      setDisabledWeekends(savedWorkTimer.disabledWeekends ?? false);
+      hasInitialized.current = true;
+      return;
+    }
+
+    // Fallback to localStorage for migration (only if not authenticated or no Firebase data)
     const savedStartHour = localStorage.getItem('dashbort_work_start_hour');
     const savedStartMinute = localStorage.getItem('dashbort_work_start_minute');
     const savedEndHour = localStorage.getItem('dashbort_work_end_hour');
@@ -58,18 +88,50 @@ export default function WorkTimer() {
     setWorkEndHour(endHour);
     setWorkEndMinute(endMinute);
 
-    hasInitialized.current = true;
-  }, []);
+    // Migrate to Firebase if user is authenticated and we haven't attempted migration yet
+    if (userId && !hasAttemptedMigration.current && (savedStartHour || savedStartMinute || savedEndHour || savedEndMinute)) {
+      hasAttemptedMigration.current = true;
+      saveWorkTimer({
+        workStartHour: startHour,
+        workStartMinute: startMinute,
+        workEndHour: endHour,
+        workEndMinute: endMinute,
+        timestamp: Date.now(),
+      }).then(() => {
+        // Clear localStorage after successful migration
+        localStorage.removeItem('dashbort_work_start_hour');
+        localStorage.removeItem('dashbort_work_start_minute');
+        localStorage.removeItem('dashbort_work_end_hour');
+        localStorage.removeItem('dashbort_work_end_minute');
+      }).catch((err) => {
+        console.error('Failed to migrate work timer settings to Firebase:', err);
+      });
+    }
 
-  // Save settings to localStorage when changed
+    hasInitialized.current = true;
+  }, [userId, savedWorkTimer, workTimerLoading, saveWorkTimer]);
+
+  // Save settings to Firebase when changed
   useEffect(() => {
     if (!hasInitialized.current) return;
+    if (!userId) return; // Only save to Firebase if user is authenticated
 
-    localStorage.setItem('dashbort_work_start_hour', workStartHour.toString());
-    localStorage.setItem('dashbort_work_start_minute', workStartMinute.toString());
-    localStorage.setItem('dashbort_work_end_hour', workEndHour.toString());
-    localStorage.setItem('dashbort_work_end_minute', workEndMinute.toString());
-  }, [workStartHour, workStartMinute, workEndHour, workEndMinute]);
+    // Debounce saves to avoid too many writes
+    const timeoutId = setTimeout(() => {
+      saveWorkTimer({
+        workStartHour,
+        workStartMinute,
+        workEndHour,
+        workEndMinute,
+        disabledWeekends,
+        timestamp: Date.now(),
+      }).catch((err) => {
+        console.error('Failed to save work timer settings:', err);
+      });
+    }, 500); // Wait 500ms after last change
+
+    return () => clearTimeout(timeoutId);
+  }, [workStartHour, workStartMinute, workEndHour, workEndMinute, disabledWeekends, userId, saveWorkTimer]);
 
   const getWorkdayTimes = () => {
     const now = new Date();
@@ -158,42 +220,67 @@ export default function WorkTimer() {
 
   const isOver = timeRemaining === 0;
 
+  // Check if it's a weekend (Saturday = 6, Sunday = 0)
+  const isWeekend = () => {
+    const dayOfWeek = new Date().getDay();
+    return dayOfWeek === 0 || dayOfWeek === 6;
+  };
+
+  const showWeekendMessage = disabledWeekends && isWeekend();
+
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-6 border border-zinc-200 dark:border-zinc-800 w-full h-full flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-          Work Day Countdown
-        </h2>
-        <button
-          onClick={() => setIsDialogOpen(true)}
-          className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
-          aria-label="Configure workday"
-        >
-          <Briefcase className="h-5 w-5" />
-        </button>
-      </div>
-      <div className="flex items-center gap-6">
-        <div className={`text-4xl font-mono font-bold ${isOver ? 'text-green-600 dark:text-green-400' : 'text-zinc-900 dark:text-zinc-100'}`}>
-          {isOver ? 'Work is over! 🎉' : formatTime(timeRemaining)}
-        </div>
-      </div>
-      <div className="mt-4 space-y-2">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-zinc-600 dark:text-zinc-400">Worked:</span>
-          <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-            {percentWorked.toFixed(1)}%
-          </span>
-        </div>
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-zinc-600 dark:text-zinc-400">Remaining:</span>
-          <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-            {percentLeft.toFixed(1)}%
-          </span>
-        </div>
-      </div>
-      <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-2">
-        Counting down to {formatTimeDisplay(workEndHour, workEndMinute)}
-      </p>
+    <BortletContainer>
+      <BortletHeader
+        title="Work Day Countdown"
+        action={
+          <button
+            onClick={() => setIsDialogOpen(true)}
+            className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+            aria-label="Configure workday"
+          >
+            <Briefcase className="h-5 w-5" />
+          </button>
+        }
+      />
+      {workTimerLoading && !hasInitialized.current ? (
+        <BortletLoading />
+      ) : (
+        <>
+          {showWeekendMessage ? (
+            <div className="flex flex-col items-center justify-center flex-1">
+              <div className="text-4xl mb-2">🎉</div>
+              <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 text-center">
+                Congrats, its the weekend
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-6">
+                <div className={`text-4xl font-mono font-bold ${isOver ? 'text-green-600 dark:text-green-400' : 'text-zinc-900 dark:text-zinc-100'}`}>
+                  {isOver ? 'Work is over! 🎉' : formatTime(timeRemaining)}
+                </div>
+              </div>
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-zinc-600 dark:text-zinc-400">Worked:</span>
+                  <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                    {percentWorked.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-zinc-600 dark:text-zinc-400">Remaining:</span>
+                  <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                    {percentLeft.toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-2">
+                Counting down to {formatTimeDisplay(workEndHour, workEndMinute)}
+              </p>
+            </>
+          )}
+        </>
+      )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
@@ -203,6 +290,16 @@ export default function WorkTimer() {
               Set your work start and end times. Changes will be saved automatically.
             </DialogDescription>
           </DialogHeader>
+          {(saveWorkTimerError || workTimerError) && (
+            <div className="text-red-600 dark:text-red-400 text-sm px-6">
+              {saveWorkTimerError?.message || workTimerError?.message || 'Error saving work timer settings'}
+            </div>
+          )}
+          {saveWorkTimerLoading && (
+            <div className="text-blue-600 dark:text-blue-400 text-sm px-6">
+              Saving...
+            </div>
+          )}
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -212,7 +309,8 @@ export default function WorkTimer() {
                 <select
                   value={workStartHour}
                   onChange={(e) => setWorkStartHour(parseInt(e.target.value, 10))}
-                  className="px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={saveWorkTimerLoading}
+                  className="px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
                     <option key={hour} value={hour}>
@@ -224,7 +322,8 @@ export default function WorkTimer() {
                 <select
                   value={workStartMinute}
                   onChange={(e) => setWorkStartMinute(parseInt(e.target.value, 10))}
-                  className="px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={saveWorkTimerLoading}
+                  className="px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {Array.from({ length: 60 }, (_, i) => i).map((minute) => (
                     <option key={minute} value={minute}>
@@ -245,7 +344,8 @@ export default function WorkTimer() {
                 <select
                   value={workEndHour}
                   onChange={(e) => setWorkEndHour(parseInt(e.target.value, 10))}
-                  className="px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={saveWorkTimerLoading}
+                  className="px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
                     <option key={hour} value={hour}>
@@ -257,7 +357,8 @@ export default function WorkTimer() {
                 <select
                   value={workEndMinute}
                   onChange={(e) => setWorkEndMinute(parseInt(e.target.value, 10))}
-                  className="px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={saveWorkTimerLoading}
+                  className="px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {Array.from({ length: 60 }, (_, i) => i).map((minute) => (
                     <option key={minute} value={minute}>
@@ -270,18 +371,33 @@ export default function WorkTimer() {
                 </span>
               </div>
             </div>
+            <div className="flex items-center gap-3">
+              <Checkbox
+                id="disabledWeekends"
+                checked={disabledWeekends}
+                onCheckedChange={(checked) => setDisabledWeekends(checked === true)}
+                disabled={saveWorkTimerLoading}
+              />
+              <label
+                htmlFor="disabledWeekends"
+                className="text-sm font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer"
+              >
+                Disabled weekends
+              </label>
+            </div>
           </div>
           <DialogFooter>
             <button
               onClick={() => setIsDialogOpen(false)}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-zinc-800"
+              disabled={saveWorkTimerLoading}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Done
             </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </BortletContainer>
   );
 }
 

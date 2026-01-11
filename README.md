@@ -97,21 +97,33 @@ dashbort/
 
 ## Bortlets
 
-Bortlets are the modular widgets that make up your Dashbort dashboard. Each bortlet is a self-contained component that displays specific information or provides functionality:
+Bortlets are the modular, pluggable widgets that make up your Dashbort dashboard. Each bortlet is a self-contained component that can be dynamically loaded, configured, and arranged by the user.
 
-- **Work Timer Bortlet**: Tracks remaining work hours
-- **Rep Counter Bortlet**: Tracks daily exercise repetitions
-- **Sunrise/Sunset Bortlet**: Shows daily sun times
-- **Recurring Daily Actions Bortlet**: Manages recurring tasks
+**Available Bortlets:**
+- **Work Timer** (`workTimer`): Countdown timer showing hours until work ends
+- **Rep Counter** (`repCounter`): Track daily exercise repetitions with multiple exercise types
+- **Sunrise/Sunset** (`sunriseSunset`): Display sunrise and sunset times for your location
+- **Recurring Daily Actions** (`recurringDailyActions`): Track completion of recurring daily tasks
+- **Days Until Payday** (`daysUntilPayday`): Countdown to next payday (compact 1x1)
+- **Date/Time** (`dateTime`): Real-time date and time display (compact 1x1)
+- **Google Calendar** (`googleCalendar`): Display upcoming Google Calendar events (requires OAuth)
+- **Workout History** (`workoutHistory`): Visual heatmap of workout history from Rep Counter
+
+For detailed documentation on bortlets, including how to add new ones, see [README_BORTLETS.md](./README_BORTLETS.md).
 
 ## Development
 
 ### Adding a New Bortlet
 
-1. Create a new component in `app/components/`
-2. Implement the bortlet with proper TypeScript types
-3. Add it to the main dashboard page (`app/page.tsx`)
-4. Use Firebase hooks from `react-firebase-hooks` for data operations
+See [README_BORTLETS.md](./README_BORTLETS.md) for comprehensive documentation. Quick steps:
+
+1. Create a new component in `app/components/bortlet/`
+2. Implement the `BortletProps` interface
+3. Register it in `lib/bortlets/registry.ts` (single source of truth)
+4. Add import to `lib/bortlets/loader.tsx`
+5. Types are automatically generated from the registry!
+
+Use Firebase hooks from `react-firebase-hooks` for data operations, and shared components from `lib/bortlets/components.tsx` for consistent UI.
 
 ### Code Style
 
