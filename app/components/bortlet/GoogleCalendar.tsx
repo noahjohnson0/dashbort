@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Calendar, Settings, ExternalLink, Clock } from 'lucide-react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '@/lib/firebase/config';
-import { useGoogleCalendarSettings } from '@/lib/firebase/userSettings';
+import { useGoogleCalendarSettings, useSaveGoogleCalendarSettings } from '@/lib/firebase/userSettings';
 import {
   Dialog,
   DialogContent,
@@ -26,11 +26,13 @@ interface CalendarEvent {
 export default function GoogleCalendar() {
   const [user, loadingAuth] = useAuthState(auth);
   const [calendarSettings, loadingSettings] = useGoogleCalendarSettings(user?.uid || null);
+  const [saveCalendarSettings, savingSettings, saveError] = useSaveGoogleCalendarSettings(user?.uid || null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
 
   const isConnected = !!calendarSettings?.refreshToken;
   
@@ -125,6 +127,29 @@ export default function GoogleCalendar() {
       console.error('Error initiating OAuth:', err);
       setError('Failed to connect to Google Calendar');
       setIsConnecting(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!user) return;
+
+    setIsDisconnecting(true);
+    setError(null);
+
+    try {
+      // Clear calendar settings by passing null
+      await saveCalendarSettings(null);
+      
+      // Clear local events
+      setEvents([]);
+      
+      // Close the dialog
+      setIsDialogOpen(false);
+    } catch (err) {
+      console.error('Error disconnecting calendar:', err);
+      setError('Failed to disconnect Google Calendar');
+    } finally {
+      setIsDisconnecting(false);
     }
   };
 
@@ -306,16 +331,29 @@ export default function GoogleCalendar() {
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              To disconnect or change settings, you can manage your Google account permissions.
+            <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
+              You can disconnect your Google Calendar account at any time. This will stop syncing events.
             </p>
+            {saveError && (
+              <p className="text-sm text-red-600 dark:text-red-400 mb-4">
+                {saveError.message || 'Failed to disconnect'}
+              </p>
+            )}
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex gap-2">
             <button
               onClick={() => setIsDialogOpen(false)}
-              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-md font-semibold transition-colors"
+              className="px-4 py-2 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-zinc-900 dark:text-zinc-100 rounded-md font-semibold transition-colors"
+              disabled={isDisconnecting}
             >
               Close
+            </button>
+            <button
+              onClick={handleDisconnect}
+              disabled={isDisconnecting || savingSettings}
+              className="px-4 py-2 bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 disabled:bg-zinc-300 dark:disabled:bg-zinc-600 disabled:cursor-not-allowed text-white rounded-md font-semibold transition-colors"
+            >
+              {isDisconnecting || savingSettings ? 'Disconnecting...' : 'Disconnect'}
             </button>
           </DialogFooter>
         </DialogContent>

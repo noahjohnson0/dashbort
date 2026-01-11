@@ -167,3 +167,13 @@
 - Follow accessibility best practices
 - Example: Use `const [user, loading, error] = useAuthState(auth)` instead of manual auth state management
 
+## Build, Commit, and Push (BNP)
+- **When the user says "bnp" (or "BNP"), the agent MUST:**
+  1. Build the project using `npm run build` (or the appropriate build command)
+  2. If the build succeeds, stage all changes with `git add .`
+  3. Commit the changes with an appropriate commit message (ask user for message if not provided, or use a descriptive default)
+  4. Push to the current branch with `git push`
+- If the build fails, do NOT commit or push - report the build errors to the user
+- If git operations fail (e.g., no remote, authentication issues), report the error to the user
+- The agent should execute these steps sequentially and report progress at each stage
+

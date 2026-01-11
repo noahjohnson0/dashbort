@@ -233,6 +233,69 @@ export interface GoogleCalendarSettings {
 }
 
 /**
+ * Custom hook to save user's Google Calendar settings to Firestore at users/{userId}/settings.googleCalendar
+ * Follows react-firebase-hooks pattern with loading and error states
+ * @param userId - The user's UID
+ * @returns Tuple with save function, loading state, and error state
+ */
+export function useSaveGoogleCalendarSettings(userId: string | null) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const saveCalendarSettings = useCallback(
+    async (settings: Partial<GoogleCalendarSettings> | null) => {
+      if (!userId) {
+        setError(new Error('User ID is required'));
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const userRef = doc(db, 'users', userId);
+        
+        if (settings === null) {
+          // Disconnect: clear all calendar settings
+          await setDoc(
+            userRef,
+            {
+              settings: {
+                googleCalendar: null,
+              },
+            },
+            { merge: true }
+          );
+        } else {
+          // Save or update settings
+          await setDoc(
+            userRef,
+            {
+              settings: {
+                googleCalendar: {
+                  ...settings,
+                  timestamp: settings.timestamp || Date.now(),
+                },
+              },
+            },
+            { merge: true }
+          );
+        }
+      } catch (err) {
+        const firebaseError = err instanceof Error ? err : new Error('Failed to save calendar settings');
+        setError(firebaseError);
+        throw firebaseError;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [userId]
+  );
+
+  return [saveCalendarSettings, loading, error] as const;
+}
+
+/**
  * Custom hook to get user's Google Calendar settings from Firestore
  * Uses react-firebase-hooks useDocumentData for reading
  * @param userId - The user's UID
