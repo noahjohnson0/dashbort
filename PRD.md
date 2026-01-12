@@ -125,7 +125,6 @@ Dashbort is a personal dashboard application that aggregates key life metrics, t
 ## Technical Constraints
 
 - Must work in modern browsers
-- Must support offline functionality for timers (localStorage fallback)
 - Must respect user privacy (location data)
 - Must be performant on low-end devices
 

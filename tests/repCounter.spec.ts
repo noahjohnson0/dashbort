@@ -11,7 +11,6 @@ test.describe('RepCounter', () => {
   };
 
   test.beforeEach(async ({ page }) => {
-    // Clear localStorage before each test
     await page.goto('/');
     
     // Wait for login and navigate to dashboard
@@ -22,11 +21,6 @@ test.describe('RepCounter', () => {
       await page.locator('form').getByRole('button', { name: 'Sign In' }).click();
       await expect(page.locator('header')).toBeVisible({ timeout: 15000 });
     }
-    
-    // Clear localStorage for rep counter
-    await page.evaluate(() => {
-      localStorage.clear();
-    });
     
     // Reload to ensure clean state
     await page.reload();
@@ -226,7 +220,7 @@ test.describe('RepCounter', () => {
     await expect(page.getByText('burpee', { exact: false })).not.toBeVisible();
   });
 
-  test('should persist counts in localStorage', async ({ page }) => {
+  test('should persist counts in Firebase', async ({ page }) => {
     const pushupCard = await getExerciseCard(page, 'pushup');
     
     // Increment a few times

@@ -1,37 +1,68 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Moon, Sun } from 'lucide-react';
+import { useThemePreference, useSaveThemePreference } from '@/lib/firebase';
 
-export function ThemeToggle() {
+interface ThemeToggleProps {
+  userId: string | null;
+}
+
+export function ThemeToggle({ userId }: ThemeToggleProps) {
   const [mounted, setMounted] = useState(false);
-  const [isDark, setIsDark] = useState(false);
+  const [themePreference, themeLoading] = useThemePreference(userId);
+  const [saveTheme] = useSaveThemePreference(userId);
+  const hasInitialized = useRef(false);
+
+  // Determine theme: Firebase preference, or system preference
+  const prefersDark = typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)').matches : false;
+  const isDark = themePreference?.theme === 'dark' || (!themePreference && prefersDark);
 
   useEffect(() => {
     setMounted(true);
-    // Check localStorage first, then system preference
-    const stored = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
-    if (stored === 'dark' || (!stored && prefersDark)) {
-      setIsDark(true);
-      document.documentElement.classList.add('dark');
-    } else {
-      setIsDark(false);
-      document.documentElement.classList.remove('dark');
-    }
   }, []);
 
-  const toggleTheme = () => {
-    const newIsDark = !isDark;
-    setIsDark(newIsDark);
+  // Initialize theme from Firebase or system preference
+  useEffect(() => {
+    if (!mounted || themeLoading) return;
+
+    // Determine theme: Firebase preference, or system preference
+    const currentIsDark = themePreference?.theme === 'dark' || (!themePreference && prefersDark);
     
-    if (newIsDark) {
+    if (currentIsDark) {
       document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
     } else {
       document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+    }
+
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+    }
+  }, [mounted, themePreference, themeLoading, prefersDark]);
+
+  const toggleTheme = async () => {
+    const newTheme = isDark ? 'light' : 'dark';
+    
+    // Update DOM immediately for responsive UI
+    if (newTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    
+    // Save to Firebase if user is authenticated
+    if (userId) {
+      try {
+        await saveTheme(newTheme);
+      } catch (err) {
+        console.error('Failed to save theme preference:', err);
+        // Revert on error
+        if (newTheme === 'dark') {
+          document.documentElement.classList.remove('dark');
+        } else {
+          document.documentElement.classList.add('dark');
+        }
+      }
     }
   };
 

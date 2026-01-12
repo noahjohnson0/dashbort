@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { useSignOut } from 'react-firebase-hooks/auth';
 import { auth } from '@/lib/firebase';
@@ -13,9 +13,9 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, Settings } from 'lucide-react';
+import { LogOut, Settings, Moon, Sun } from 'lucide-react';
 import type { User } from 'firebase/auth';
-import { ThemeToggle } from './ThemeToggle';
+import { useThemePreference, useSaveThemePreference } from '@/lib/firebase';
 import { BortConfigurationModal } from './BortConfigurationModal';
 import { Button } from '@/components/ui/button';
 
@@ -29,6 +29,54 @@ interface HeaderProps {
 export default function Header({ user, filledSpaces, availableSpaces, totalSpaces }: HeaderProps) {
     const [signOut, , signOutError] = useSignOut(auth);
     const [configModalOpen, setConfigModalOpen] = useState(false);
+    const [themePreference, themeLoading] = useThemePreference(user.uid);
+    const [saveTheme] = useSaveThemePreference(user.uid);
+    const hasInitialized = useRef(false);
+
+    // Determine theme: Firebase preference, or system preference
+    const prefersDark = typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)').matches : false;
+    const isDark = themePreference?.theme === 'dark' || (!themePreference && prefersDark);
+
+    // Initialize theme from Firebase or system preference
+    useEffect(() => {
+        if (themeLoading) return;
+
+        const currentIsDark = themePreference?.theme === 'dark' || (!themePreference && prefersDark);
+        
+        if (currentIsDark) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+
+        if (!hasInitialized.current) {
+            hasInitialized.current = true;
+        }
+    }, [themePreference, themeLoading, prefersDark]);
+
+    const toggleTheme = async () => {
+        const newTheme = isDark ? 'light' : 'dark';
+        
+        // Update DOM immediately for responsive UI
+        if (newTheme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+        
+        // Save to Firebase
+        try {
+            await saveTheme(newTheme);
+        } catch (err) {
+            console.error('Failed to save theme preference:', err);
+            // Revert on error
+            if (newTheme === 'dark') {
+                document.documentElement.classList.remove('dark');
+            } else {
+                document.documentElement.classList.add('dark');
+            }
+        }
+    };
 
     return (
         <header className="mb-8 flex items-center justify-between">
@@ -59,7 +107,6 @@ export default function Header({ user, filledSpaces, availableSpaces, totalSpace
                     </span>
                 </div>
                 <div className="flex items-center gap-3">
-                    <ThemeToggle />
                     <Button
                         variant="ghost"
                         size="icon"
@@ -85,6 +132,23 @@ export default function Header({ user, filledSpaces, availableSpaces, totalSpace
                                 <p className="text-sm font-medium leading-none">{user.email}</p>
                             </div>
                         </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                            onClick={toggleTheme}
+                            className="cursor-pointer"
+                        >
+                            {isDark ? (
+                                <>
+                                    <Sun className="mr-2 h-4 w-4" />
+                                    <span>Light mode</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Moon className="mr-2 h-4 w-4" />
+                                    <span>Dark mode</span>
+                                </>
+                            )}
+                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                             onClick={async () => {

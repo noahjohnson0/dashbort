@@ -12,9 +12,6 @@ interface SunTimes {
   isDay: boolean;
 }
 
-const LOCATION_STORAGE_KEY = 'dashbort_location_zipcode';
-const LOCATION_NAME_KEY = 'dashbort_location_name';
-
 export default function SunriseSunset({ userId }: BortletProps) {
   const [savedLocation, locationLoading, locationError] = useUserLocation(userId);
   const [saveLocation, saveLocationLoading, saveLocationError] = useSaveUserLocation(userId);
@@ -111,8 +108,6 @@ export default function SunriseSunset({ userId }: BortletProps) {
         
         setLocation({ lat, lon });
         setLocationName(displayName);
-        localStorage.setItem(LOCATION_STORAGE_KEY, zip);
-        localStorage.setItem(LOCATION_NAME_KEY, displayName);
         setZipcode(zip);
         setIsEditingLocation(false);
         
@@ -190,8 +185,6 @@ export default function SunriseSunset({ userId }: BortletProps) {
   };
 
   const handleUseCurrentLocation = () => {
-    localStorage.removeItem(LOCATION_STORAGE_KEY);
-    localStorage.removeItem(LOCATION_NAME_KEY);
     setZipcode('');
     setLocationName('');
     setIsEditingLocation(false);
@@ -212,7 +205,7 @@ export default function SunriseSunset({ userId }: BortletProps) {
     // Wait for location loading to complete
     if (locationLoading) return;
     
-    // First, try to load location from Firebase if user is authenticated
+    // Load location from Firebase if user is authenticated
     if (userId && savedLocation) {
       setLocation({ lat: savedLocation.latitude, lon: savedLocation.longitude });
       fetchSunTimes(savedLocation.latitude, savedLocation.longitude);
@@ -220,26 +213,15 @@ export default function SunriseSunset({ userId }: BortletProps) {
       return;
     }
     
-    // Fallback to localStorage if Firebase doesn't have location
-    const savedZipcode = localStorage.getItem(LOCATION_STORAGE_KEY);
-    const savedLocationName = localStorage.getItem(LOCATION_NAME_KEY);
-    if (savedZipcode) {
-      setZipcode(savedZipcode);
-      if (savedLocationName) {
-        setLocationName(savedLocationName);
-      }
-      geocodeZipcode(savedZipcode);
-    } else {
-      // Get user's location automatically
-      getAutoLocation();
-    }
+    // If no Firebase location, get user's location automatically
+    getAutoLocation();
     
     hasInitialized.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, savedLocation, locationLoading]);
 
   return (
-    <BortletContainer className="select-none">
+    <BortletContainer className="select-none overflow-hidden">
       <BortletHeader
         title="Sunrise & Sunset"
         action={
@@ -253,9 +235,9 @@ export default function SunriseSunset({ userId }: BortletProps) {
         }
       />
 
-      <div className="flex-1 flex flex-col justify-center">
+      <div className="flex-1 flex flex-col justify-center min-h-0">
         {isEditingLocation ? (
-          <div className="space-y-4">
+          <div className="space-y-4 px-1 overflow-y-auto">
             <form onSubmit={handleZipcodeSubmit} className="space-y-3">
               <div>
                 <label htmlFor="zipcode" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
@@ -297,49 +279,49 @@ export default function SunriseSunset({ userId }: BortletProps) {
         ) : (
           <>
             {loading ? (
-              <div className="flex items-center justify-around gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse" />
-                  <div>
-                    <div className="h-4 w-16 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse mb-2" />
-                    <div className="h-8 w-24 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse" />
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                  <div className="h-5 w-5 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse flex-shrink-0" />
+                  <div className="min-w-0">
+                    <div className="h-3 w-12 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse mb-1.5" />
+                    <div className="h-6 w-20 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse" />
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse" />
-                  <div>
-                    <div className="h-4 w-16 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse mb-2" />
-                    <div className="h-8 w-24 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse" />
+                <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
+                  <div className="h-5 w-5 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse flex-shrink-0" />
+                  <div className="min-w-0">
+                    <div className="h-3 w-12 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse mb-1.5" />
+                    <div className="h-6 w-20 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse" />
                   </div>
                 </div>
               </div>
             ) : error && !sunTimes ? (
-              <div className="text-red-600 dark:text-red-400 text-sm">{error}</div>
+              <div className="text-red-600 dark:text-red-400 text-sm px-1">{error}</div>
             ) : (
-              <div className="space-y-4">
-                <div className="flex items-center justify-around gap-4">
-                  <div className="flex items-center gap-3">
-                    <Sunrise className="h-8 w-8 text-orange-500" />
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-1.5">
+                    <Sunrise className="h-5 w-5 text-orange-500 flex-shrink-0" />
                     <div>
-                      <div className="text-sm text-zinc-600 dark:text-zinc-400">Sunrise</div>
-                      <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+                      <div className="text-xs text-zinc-600 dark:text-zinc-400 leading-tight">Sunrise</div>
+                      <div className="text-lg font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
                         {sunTimes?.sunrise}
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Sunset className="h-8 w-8 text-orange-600" />
+                  <div className="flex items-center gap-1.5">
+                    <Sunset className="h-5 w-5 text-orange-600 flex-shrink-0" />
                     <div>
-                      <div className="text-sm text-zinc-600 dark:text-zinc-400">Sunset</div>
-                      <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+                      <div className="text-xs text-zinc-600 dark:text-zinc-400 leading-tight">Sunset</div>
+                      <div className="text-lg font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
                         {sunTimes?.sunset}
                       </div>
                     </div>
                   </div>
                 </div>
                 {(locationName || zipcode) && (
-                  <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800">
-                    <div className="text-xs text-zinc-500 dark:text-zinc-500 mt-1 text-center">
+                  <div className="pt-1.5 border-t border-zinc-200 dark:border-zinc-800">
+                    <div className="text-xs text-zinc-500 dark:text-zinc-500 text-center truncate">
                       Location: {locationName || zipcode}
                     </div>
                   </div>

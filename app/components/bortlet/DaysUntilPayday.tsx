@@ -5,9 +5,6 @@ import type { BortletProps } from '@/lib/bortlets/types';
 import { BortletContainerSmall } from '@/lib/bortlets/components';
 import { useSavePaydaySettings, usePaydaySettings } from '@/lib/firebase';
 
-const PAYDAY_STORAGE_KEY_1 = 'dashbort_payday_day_1';
-const PAYDAY_STORAGE_KEY_2 = 'dashbort_payday_day_2';
-
 // Helper function to get the last day of a month
 function getLastDayOfMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate();
@@ -110,11 +107,6 @@ export default function DaysUntilPayday({ userId }: BortletProps) {
       return;
     }
 
-    const day1Str = dayOfMonth1 === 'last' ? 'last' : dayOfMonth1.toString();
-    const day2Str = dayOfMonth2 === 'last' ? 'last' : dayOfMonth2.toString();
-    localStorage.setItem(PAYDAY_STORAGE_KEY_1, day1Str);
-    localStorage.setItem(PAYDAY_STORAGE_KEY_2, day2Str);
-
     // Save to Firebase
     if (userId) {
       try {
@@ -145,7 +137,7 @@ export default function DaysUntilPayday({ userId }: BortletProps) {
     // Wait for payday loading to complete
     if (paydayLoading) return;
 
-    // First, try to load payday from Firebase if user is authenticated
+    // Load payday from Firebase if user is authenticated
     if (userId && savedPayday) {
       // Handle migration from old single-day format
       if ('dayOfMonth' in savedPayday && !('dayOfMonth1' in savedPayday)) {
@@ -165,41 +157,8 @@ export default function DaysUntilPayday({ userId }: BortletProps) {
       return;
     }
 
-    // Fallback to localStorage if Firebase doesn't have payday
-    const savedDay1 = localStorage.getItem(PAYDAY_STORAGE_KEY_1);
-    const savedDay2 = localStorage.getItem(PAYDAY_STORAGE_KEY_2);
-
-    // Check for old single-day format
-    const oldSavedDay = localStorage.getItem('dashbort_payday_day');
-
-    if (savedDay1 && savedDay2) {
-      const day1 = savedDay1 === 'last' ? 'last' : parseInt(savedDay1, 10);
-      const day2 = savedDay2 === 'last' ? 'last' : parseInt(savedDay2, 10);
-      if (
-        (day1 === 'last' || (day1 >= 1 && day1 <= 31)) &&
-        (day2 === 'last' || (day2 >= 1 && day2 <= 31))
-      ) {
-        setDayOfMonth1(day1);
-        setDayOfMonth2(day2);
-        calculateDaysUntilPayday(day1, day2);
-      } else {
-        setIsEditing(true);
-      }
-    } else if (oldSavedDay) {
-      // Migrate from old format
-      const day = parseInt(oldSavedDay, 10);
-      if (day >= 1 && day <= 31) {
-        setDayOfMonth1(day);
-        setDayOfMonth2(day === 1 ? 'last' : 15);
-        calculateDaysUntilPayday(day, day === 1 ? 'last' : 15);
-        // Clean up old key
-        localStorage.removeItem('dashbort_payday_day');
-      } else {
-        setIsEditing(true);
-      }
-    } else {
-      setIsEditing(true);
-    }
+    // If no Firebase data, show edit UI
+    setIsEditing(true);
 
     hasInitialized.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps

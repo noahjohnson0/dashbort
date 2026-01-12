@@ -29,22 +29,20 @@ export default function WorkTimer({ userId }: BortletProps) {
   const [workEndMinute, setWorkEndMinute] = useState(0);
   const [disabledWeekends, setDisabledWeekends] = useState(false);
   const hasInitialized = useRef(false);
-  const hasAttemptedMigration = useRef(false);
 
   // Reset initialization when user changes
   useEffect(() => {
     hasInitialized.current = false;
-    hasAttemptedMigration.current = false;
   }, [userId]);
 
-  // Load settings from Firebase or localStorage (for migration)
+  // Load settings from Firebase
   useEffect(() => {
     if (hasInitialized.current) return;
 
     // Wait for work timer loading to complete
     if (workTimerLoading) return;
 
-    // First, try to load from Firebase if user is authenticated
+    // Load from Firebase if user is authenticated
     if (userId && savedWorkTimer) {
       setWorkStartHour(savedWorkTimer.workStartHour);
       setWorkStartMinute(savedWorkTimer.workStartMinute);
@@ -55,61 +53,9 @@ export default function WorkTimer({ userId }: BortletProps) {
       return;
     }
 
-    // Fallback to localStorage for migration (only if not authenticated or no Firebase data)
-    const savedStartHour = localStorage.getItem('dashbort_work_start_hour');
-    const savedStartMinute = localStorage.getItem('dashbort_work_start_minute');
-    const savedEndHour = localStorage.getItem('dashbort_work_end_hour');
-    const savedEndMinute = localStorage.getItem('dashbort_work_end_minute');
-
-    let startHour = 9;
-    let startMinute = 0;
-    let endHour = 17;
-    let endMinute = 0;
-
-    if (savedStartHour) {
-      const hour = parseInt(savedStartHour, 10);
-      if (hour >= 0 && hour <= 23) startHour = hour;
-    }
-    if (savedStartMinute) {
-      const minute = parseInt(savedStartMinute, 10);
-      if (minute >= 0 && minute <= 59) startMinute = minute;
-    }
-    if (savedEndHour) {
-      const hour = parseInt(savedEndHour, 10);
-      if (hour >= 0 && hour <= 23) endHour = hour;
-    }
-    if (savedEndMinute) {
-      const minute = parseInt(savedEndMinute, 10);
-      if (minute >= 0 && minute <= 59) endMinute = minute;
-    }
-
-    setWorkStartHour(startHour);
-    setWorkStartMinute(startMinute);
-    setWorkEndHour(endHour);
-    setWorkEndMinute(endMinute);
-
-    // Migrate to Firebase if user is authenticated and we haven't attempted migration yet
-    if (userId && !hasAttemptedMigration.current && (savedStartHour || savedStartMinute || savedEndHour || savedEndMinute)) {
-      hasAttemptedMigration.current = true;
-      saveWorkTimer({
-        workStartHour: startHour,
-        workStartMinute: startMinute,
-        workEndHour: endHour,
-        workEndMinute: endMinute,
-        timestamp: Date.now(),
-      }).then(() => {
-        // Clear localStorage after successful migration
-        localStorage.removeItem('dashbort_work_start_hour');
-        localStorage.removeItem('dashbort_work_start_minute');
-        localStorage.removeItem('dashbort_work_end_hour');
-        localStorage.removeItem('dashbort_work_end_minute');
-      }).catch((err) => {
-        console.error('Failed to migrate work timer settings to Firebase:', err);
-      });
-    }
-
+    // Use defaults if no Firebase data
     hasInitialized.current = true;
-  }, [userId, savedWorkTimer, workTimerLoading, saveWorkTimer]);
+  }, [userId, savedWorkTimer, workTimerLoading]);
 
   // Save settings to Firebase when changed
   useEffect(() => {

@@ -62,12 +62,12 @@ export const BORTLET_REGISTRY = {
   googleCalendar: {
     id: 'googleCalendar',
     importPath: '@/app/components/bortlet/GoogleCalendar',
-    is1x1: false,
+    is2x2: true,
   },
   workoutHistory: {
     id: 'workoutHistory',
     importPath: '@/app/components/bortlet/WorkoutHistory',
-    is2x1: true,
+    is2x2: true,
   },
 } as const satisfies Record<string, BortletConfig>;
 

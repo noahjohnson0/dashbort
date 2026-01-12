@@ -395,6 +395,75 @@ export function useWorkTimerSettings(userId: string | null) {
   return [workTimer, loading, error] as const;
 }
 
+export interface ThemePreference {
+  theme: 'light' | 'dark';
+  timestamp?: number;
+}
+
+/**
+ * Custom hook to save user's theme preference to Firestore at users/{userId}/settings.theme
+ * Follows react-firebase-hooks pattern with loading and error states
+ * @param userId - The user's UID
+ * @returns Tuple with save function, loading state, and error state
+ */
+export function useSaveThemePreference(userId: string | null) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const saveTheme = useCallback(
+    async (theme: 'light' | 'dark') => {
+      if (!userId) {
+        setError(new Error('User ID is required'));
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const userRef = doc(db, 'users', userId);
+        
+        await setDoc(
+          userRef,
+          {
+            settings: {
+              theme: {
+                theme,
+                timestamp: Date.now(),
+              },
+            },
+          },
+          { merge: true }
+        );
+      } catch (err) {
+        const firebaseError = err instanceof Error ? err : new Error('Failed to save theme preference');
+        setError(firebaseError);
+        throw firebaseError;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [userId]
+  );
+
+  return [saveTheme, loading, error] as const;
+}
+
+/**
+ * Custom hook to get user's theme preference from Firestore
+ * Uses react-firebase-hooks useDocumentData for reading
+ * @param userId - The user's UID
+ * @returns Theme preference, loading state, and error state
+ */
+export function useThemePreference(userId: string | null) {
+  const userRef = userId ? doc(db, 'users', userId) : null;
+  const [userData, loading, error] = useDocumentData(userRef);
+
+  const themePreference: ThemePreference | null = userData?.settings?.theme || null;
+
+  return [themePreference, loading, error] as const;
+}
+
 export interface GoogleCalendarSettings {
   accessToken?: string;
   refreshToken?: string;
