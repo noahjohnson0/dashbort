@@ -52,8 +52,9 @@ export async function GET(request: NextRequest) {
     );
   } catch (error) {
     console.error('Error in OAuth callback:', error);
+    const message = error instanceof Error ? error.message : String(error);
     return NextResponse.redirect(
-      new URL('/?error=oauth_failed', request.url)
+      new URL(`/?error=oauth_failed&detail=${encodeURIComponent(message)}`, request.url)
     );
   }
 }
