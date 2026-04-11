@@ -13,11 +13,19 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, Settings, Moon, Sun } from 'lucide-react';
-import type { User } from 'firebase/auth';
+import { LogOut, Settings, Moon, Sun, KeyRound } from 'lucide-react';
+import { EmailAuthProvider, linkWithCredential, updatePassword, type User } from 'firebase/auth';
 import { useThemePreference, useSaveThemePreference } from '@/lib/firebase';
 import { BortConfigurationModal } from './BortConfigurationModal';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 
 interface HeaderProps {
     user: User;
@@ -29,6 +37,55 @@ interface HeaderProps {
 export default function Header({ user, filledSpaces, availableSpaces, totalSpaces }: HeaderProps) {
     const [signOut, , signOutError] = useSignOut(auth);
     const [configModalOpen, setConfigModalOpen] = useState(false);
+    const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [passwordError, setPasswordError] = useState('');
+    const [passwordSaving, setPasswordSaving] = useState(false);
+    const [passwordSuccess, setPasswordSuccess] = useState(false);
+
+    const hasPasswordProvider = user.providerData.some((p) => p.providerId === 'password');
+
+    const handleSetPassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setPasswordError('');
+        setPasswordSuccess(false);
+
+        if (newPassword.length < 6) {
+            setPasswordError('Password must be at least 6 characters.');
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            setPasswordError('Passwords do not match.');
+            return;
+        }
+        if (!user.email) {
+            setPasswordError('Your account has no email address.');
+            return;
+        }
+
+        setPasswordSaving(true);
+        try {
+            if (hasPasswordProvider) {
+                await updatePassword(user, newPassword);
+            } else {
+                const credential = EmailAuthProvider.credential(user.email, newPassword);
+                await linkWithCredential(user, credential);
+            }
+            setPasswordSuccess(true);
+            setNewPassword('');
+            setConfirmPassword('');
+        } catch (err) {
+            const authErr = err as { code?: string; message?: string };
+            if (authErr.code === 'auth/requires-recent-login') {
+                setPasswordError('Please sign out and sign back in with Google, then try again.');
+            } else {
+                setPasswordError(authErr.message || 'Failed to set password.');
+            }
+        } finally {
+            setPasswordSaving(false);
+        }
+    };
     const [themePreference, themeLoading] = useThemePreference(user.uid);
     const [saveTheme] = useSaveThemePreference(user.uid);
     const hasInitialized = useRef(false);
@@ -149,6 +206,19 @@ export default function Header({ user, filledSpaces, availableSpaces, totalSpace
                                 </>
                             )}
                         </DropdownMenuItem>
+                        <DropdownMenuItem
+                            onClick={() => {
+                                setPasswordError('');
+                                setPasswordSuccess(false);
+                                setNewPassword('');
+                                setConfirmPassword('');
+                                setPasswordDialogOpen(true);
+                            }}
+                            className="cursor-pointer"
+                        >
+                            <KeyRound className="mr-2 h-4 w-4" />
+                            <span>{hasPasswordProvider ? 'Change password' : 'Set password'}</span>
+                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                             onClick={async () => {
@@ -166,11 +236,83 @@ export default function Header({ user, filledSpaces, availableSpaces, totalSpace
                     </DropdownMenu>
                 </div>
             </div>
-            <BortConfigurationModal 
-                user={user} 
-                open={configModalOpen} 
-                onOpenChange={setConfigModalOpen} 
+            <BortConfigurationModal
+                user={user}
+                open={configModalOpen}
+                onOpenChange={setConfigModalOpen}
             />
+            <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>
+                            {hasPasswordProvider ? 'Change password' : 'Set a password'}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {hasPasswordProvider
+                                ? 'Update the password for your account.'
+                                : `Add a password to ${user.email} so you can sign in with email and password (e.g. on a work computer) without using Google.`}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleSetPassword} className="space-y-4">
+                        <div>
+                            <label htmlFor="new-password" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                                New password
+                            </label>
+                            <input
+                                id="new-password"
+                                type="password"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                required
+                                minLength={6}
+                                autoComplete="new-password"
+                                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="••••••••"
+                            />
+                        </div>
+                        <div>
+                            <label htmlFor="confirm-password" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                                Confirm password
+                            </label>
+                            <input
+                                id="confirm-password"
+                                type="password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                required
+                                minLength={6}
+                                autoComplete="new-password"
+                                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="••••••••"
+                            />
+                        </div>
+                        {passwordError && (
+                            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                                <p className="text-sm text-red-600 dark:text-red-400">{passwordError}</p>
+                            </div>
+                        )}
+                        {passwordSuccess && (
+                            <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                                <p className="text-sm text-green-600 dark:text-green-400">
+                                    Password saved. You can now sign in with {user.email} and your new password.
+                                </p>
+                            </div>
+                        )}
+                        <DialogFooter>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => setPasswordDialogOpen(false)}
+                            >
+                                Close
+                            </Button>
+                            <Button type="submit" disabled={passwordSaving}>
+                                {passwordSaving ? 'Saving...' : 'Save password'}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </header>
     );
 }

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useSignInWithEmailAndPassword, useCreateUserWithEmailAndPassword } from 'react-firebase-hooks/auth';
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
 export default function Login() {
@@ -13,6 +13,7 @@ export default function Login() {
   const [errorMessage, setErrorMessage] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleError, setGoogleError] = useState<Error | null>(null);
+  const [resetMessage, setResetMessage] = useState('');
 
   const [signInWithEmailAndPassword, , signInLoading, signInError] = useSignInWithEmailAndPassword(auth);
   const [createUserWithEmailAndPassword, , signUpLoading, signUpError] = useCreateUserWithEmailAndPassword(auth);
@@ -30,6 +31,22 @@ export default function Login() {
     } catch (error) {
       // Error is handled by the hook's error state
       console.error('Auth error:', error);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    setErrorMessage('');
+    setResetMessage('');
+    if (!email) {
+      setErrorMessage('Enter your email above, then click "Forgot password?" again.');
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setResetMessage(`Password reset email sent to ${email}. Note: this only works if a password has been set on the account.`);
+    } catch (err) {
+      const authErr = err as Error;
+      setErrorMessage(authErr.message);
     }
   };
 
@@ -105,12 +122,28 @@ export default function Login() {
               />
             </div>
 
-            {error && (
+            {(error || errorMessage) && (
               <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                 <p className="text-sm text-red-600 dark:text-red-400">
-                  {error.message}
+                  {errorMessage || error?.message}
                 </p>
               </div>
+            )}
+
+            {resetMessage && (
+              <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                <p className="text-sm text-green-600 dark:text-green-400">{resetMessage}</p>
+              </div>
+            )}
+
+            {!isSignUp && (
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+              >
+                Forgot password?
+              </button>
             )}
 
             <button
