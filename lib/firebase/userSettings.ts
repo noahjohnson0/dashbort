@@ -464,6 +464,68 @@ export function useThemePreference(userId: string | null) {
   return [themePreference, loading, error] as const;
 }
 
+export interface TvModePreference {
+  enabled: boolean;
+  timestamp?: number;
+}
+
+/**
+ * Custom hook to save user's TV mode preference to Firestore at users/{userId}/settings.tvMode
+ */
+export function useSaveTvModePreference(userId: string | null) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const saveTvMode = useCallback(
+    async (enabled: boolean) => {
+      if (!userId) {
+        setError(new Error('User ID is required'));
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const userRef = doc(db, 'users', userId);
+        await setDoc(
+          userRef,
+          {
+            settings: {
+              tvMode: {
+                enabled,
+                timestamp: Date.now(),
+              },
+            },
+          },
+          { merge: true }
+        );
+      } catch (err) {
+        const firebaseError = err instanceof Error ? err : new Error('Failed to save TV mode preference');
+        setError(firebaseError);
+        throw firebaseError;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [userId]
+  );
+
+  return [saveTvMode, loading, error] as const;
+}
+
+/**
+ * Custom hook to get user's TV mode preference from Firestore
+ */
+export function useTvModePreference(userId: string | null) {
+  const userRef = userId ? doc(db, 'users', userId) : null;
+  const [userData, loading, error] = useDocumentData(userRef);
+
+  const tvMode: TvModePreference | null = userData?.settings?.tvMode || null;
+
+  return [tvMode, loading, error] as const;
+}
+
 export interface GoogleCalendarSettings {
   accessToken?: string;
   refreshToken?: string;

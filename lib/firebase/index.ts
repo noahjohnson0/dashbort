@@ -7,6 +7,7 @@ export { useSaveUserLocation, useUserLocation, type UserLocation } from "./userS
 export { useSavePaydaySettings, usePaydaySettings, type PaydaySettings } from "./userSettings";
 export { useSaveWorkTimerSettings, useWorkTimerSettings, type WorkTimerSettings } from "./userSettings";
 export { useSaveThemePreference, useThemePreference, type ThemePreference } from "./userSettings";
+export { useSaveTvModePreference, useTvModePreference, type TvModePreference } from "./userSettings";
 
 // Re-export rep counter hooks
 export { useSaveRepCounterData, useRepCounterData, type RepCounterData } from "./repCounter";

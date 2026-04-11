@@ -13,9 +13,9 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, Settings, Moon, Sun, KeyRound } from 'lucide-react';
+import { LogOut, Settings, Moon, Sun, KeyRound, Tv } from 'lucide-react';
 import { EmailAuthProvider, linkWithCredential, updatePassword, type User } from 'firebase/auth';
-import { useThemePreference, useSaveThemePreference } from '@/lib/firebase';
+import { useThemePreference, useSaveThemePreference, useTvModePreference, useSaveTvModePreference } from '@/lib/firebase';
 import { BortConfigurationModal } from './BortConfigurationModal';
 import { Button } from '@/components/ui/button';
 import {
@@ -88,7 +88,39 @@ export default function Header({ user, filledSpaces, availableSpaces, totalSpace
     };
     const [themePreference, themeLoading] = useThemePreference(user.uid);
     const [saveTheme] = useSaveThemePreference(user.uid);
+    const [tvModePreference, tvModeLoading] = useTvModePreference(user.uid);
+    const [saveTvMode] = useSaveTvModePreference(user.uid);
     const hasInitialized = useRef(false);
+
+    const tvModeEnabled = tvModePreference?.enabled ?? false;
+
+    useEffect(() => {
+        if (tvModeLoading) return;
+        if (tvModeEnabled) {
+            document.documentElement.classList.add('tv-mode');
+        } else {
+            document.documentElement.classList.remove('tv-mode');
+        }
+    }, [tvModeEnabled, tvModeLoading]);
+
+    const toggleTvMode = async () => {
+        const next = !tvModeEnabled;
+        if (next) {
+            document.documentElement.classList.add('tv-mode');
+        } else {
+            document.documentElement.classList.remove('tv-mode');
+        }
+        try {
+            await saveTvMode(next);
+        } catch (err) {
+            console.error('Failed to save TV mode preference:', err);
+            if (next) {
+                document.documentElement.classList.remove('tv-mode');
+            } else {
+                document.documentElement.classList.add('tv-mode');
+            }
+        }
+    };
 
     // Determine theme: Firebase preference, or system preference
     const prefersDark = typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)').matches : false;
@@ -206,6 +238,14 @@ export default function Header({ user, filledSpaces, availableSpaces, totalSpace
                                 </>
                             )}
                         </DropdownMenuItem>
+                        <DropdownMenuItem
+                            onClick={toggleTvMode}
+                            className="cursor-pointer"
+                        >
+                            <Tv className="mr-2 h-4 w-4" />
+                            <span>{tvModeEnabled ? 'Exit TV mode' : 'TV mode'}</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem
                             onClick={() => {
                                 setPasswordError('');
