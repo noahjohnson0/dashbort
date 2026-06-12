@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/logo.png" alt="dashbort" width="200">
+</p>
+
 # Dashbort
 
 A single pane of glass for your life. Dashbort is a personal dashboard application that aggregates key life metrics, timers, and information into a single, always-visible interface.
