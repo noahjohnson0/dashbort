@@ -1,11 +1,14 @@
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.png">
-    <img src="docs/assets/logo-light.png" alt="dashbort" width="200">
-  </picture>
-</p>
-
-# Dashbort
+<table border="0" cellspacing="0" cellpadding="0">
+<tr>
+<td width="220" valign="middle">
+<picture>
+<source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.png">
+<img src="docs/assets/logo-light.png" alt="dashbort" width="200">
+</picture>
+</td>
+<td valign="middle"><h1>D&nbsp;A&nbsp;S&nbsp;H&nbsp;B&nbsp;O&nbsp;R&nbsp;T</h1></td>
+</tr>
+</table>
 
 A single pane of glass for your life. Dashbort is a personal dashboard application that aggregates key life metrics, timers, and information into a single, always-visible interface.
 
