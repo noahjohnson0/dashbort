@@ -1,10 +1,10 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow authenticated users full read/write access to all documents
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    // Each user can only read and write their own users/{uid} doc and anything under it.
+    // Server routes use the Admin SDK, which bypasses these rules.
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
-
